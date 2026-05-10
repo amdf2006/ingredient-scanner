@@ -113,12 +113,9 @@ function App() {
     setLoading(true)
     setResult('')
 
-    const response = await fetch('https://ingredient-scanner-server.onrender.com', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ingredients })
-    })
-
+    const response = await fetch('https://ingredient-scanner-server.onrender.com/analyze', 
+      
+      {
     const data = await response.json()
     setProgress(100)
     setTimeout(() => {
