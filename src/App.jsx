@@ -157,7 +157,7 @@ function App() {
         ) : (
           <div className="upload-buttons">
             <button className="button-webcam" onClick={startCamera}>
-              📷 웹캠으로 찍기
+              📷 카메라로 찍기
             </button>
             <label className="button-upload">
               📁 사진 업로드
