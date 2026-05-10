@@ -50,7 +50,9 @@ function App() {
     setIngredients('')
     setResult('')
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+  video: { facingMode: 'environment' } 
+})
       streamRef.current = stream
       setTimeout(() => {
         if (videoRef.current) {
