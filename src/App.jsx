@@ -113,7 +113,7 @@ function App() {
     setLoading(true)
     setResult('')
 
-    const response = await fetch('http://https://ingredient-scanner-server.onrender.com/analyze', {
+    const response = await fetch('https://ingredient-scanner-server.onrender.com', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ingredients })
