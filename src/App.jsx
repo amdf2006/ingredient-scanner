@@ -50,9 +50,9 @@ function App() {
     setIngredients('')
     setResult('')
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-  video: { facingMode: 'environment' } 
-})
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
+      })
       streamRef.current = stream
       setTimeout(() => {
         if (videoRef.current) {
@@ -60,7 +60,7 @@ function App() {
         }
       }, 100)
     } catch (err) {
-      alert('웹캠에 접근할 수 없어요. 브라우저에서 카메라 권한을 허용해주세요.')
+      alert('카메라에 접근할 수 없어요. 브라우저에서 카메라 권한을 허용해주세요.')
       setShowCamera(false)
     }
   }
@@ -113,16 +113,25 @@ function App() {
     setLoading(true)
     setResult('')
 
-    const response = await fetch('https://ingredient-scanner-server.onrender.com/analyze', 
-      
-      {
-    const data = await response.json()
-    setProgress(100)
-    setTimeout(() => {
-      setResult(data.result)
+    try {
+      const response = await fetch('https://ingredient-scanner-server.onrender.com/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ingredients })
+      })
+
+      const data = await response.json()
+      setProgress(100)
+      setTimeout(() => {
+        setResult(data.result)
+        setLoading(false)
+        setProgress(0)
+      }, 300)
+    } catch (error) {
+      setResult('서버 연결에 실패했어요. 다시 시도해주세요.')
       setLoading(false)
       setProgress(0)
-    }, 300)
+    }
   }
 
   return (
