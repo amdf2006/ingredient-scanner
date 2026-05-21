@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import './App.css'
 import ReactMarkdown from 'react-markdown'
 import Tesseract from 'tesseract.js'
-import { BrowserMultiFormatReader } from '@zxing/library'
+import { Html5Qrcode } from 'html5-qrcode'
 
 const LOADING_MESSAGES = [
   '성분표를 읽는 중...',
@@ -21,12 +21,11 @@ function App() {
   const [preview, setPreview] = useState(null)
   const [showCamera, setShowCamera] = useState(false)
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false)
-  const [barcodeMsg, setBarcodeMsg] = useState('바코드를 카메라에 비춰주세요')
+  const [barcodeMsg, setBarcodeMsg] = useState('')
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
-  const barcodeVideoRef = useRef(null)
-  const barcodeReaderRef = useRef(null)
+  const html5QrCodeRef = useRef(null)
 
   useEffect(() => {
     if (!loading) return
@@ -119,50 +118,42 @@ function App() {
     setBarcodeMsg('바코드를 카메라에 비춰주세요')
 
     try {
-      const reader = new BrowserMultiFormatReader()
-      barcodeReaderRef.current = reader
+      const html5QrCode = new Html5Qrcode('barcode-reader')
+      html5QrCodeRef.current = html5QrCode
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
-      })
-      streamRef.current = stream
-
-      setTimeout(async () => {
-        if (barcodeVideoRef.current) {
-          barcodeVideoRef.current.srcObject = stream
-          await barcodeVideoRef.current.play()
-
-          reader.decodeFromVideoElement(barcodeVideoRef.current, async (result, err) => {
-            if (result) {
-              const barcode = result.getText()
-              stopBarcodeScanner()
-              setBarcodeMsg(`바코드 인식: ${barcode}`)
-              await fetchProductByBarcode(barcode)
-            }
-          })
-        }
-      }, 100)
+      await html5QrCode.start(
+        { facingMode: 'environment' },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 150 }
+        },
+        async (decodedText) => {
+          await html5QrCode.stop()
+          setShowBarcodeScanner(false)
+          setBarcodeMsg(`바코드 인식: ${decodedText}`)
+          await fetchProductByBarcode(decodedText)
+        },
+        (errorMessage) => {}
+      )
     } catch (err) {
       alert('카메라에 접근할 수 없어요.')
       setShowBarcodeScanner(false)
     }
   }
 
-  const stopBarcodeScanner = () => {
-    if (barcodeReaderRef.current) {
-      barcodeReaderRef.current.reset()
-      barcodeReaderRef.current = null
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop())
-      streamRef.current = null
+  const stopBarcodeScanner = async () => {
+    if (html5QrCodeRef.current) {
+      try {
+        await html5QrCodeRef.current.stop()
+        html5QrCodeRef.current = null
+      } catch (e) {}
     }
     setShowBarcodeScanner(false)
   }
 
   const fetchProductByBarcode = async (barcode) => {
     setOcrLoading(true)
-    setBarcodeMsg(`바코드 ${barcode} 제품 정보 가져오는 중...`)
+    setBarcodeMsg(`제품 정보 가져오는 중...`)
 
     try {
       const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`)
@@ -243,7 +234,7 @@ function App() {
           </div>
         ) : showBarcodeScanner ? (
           <div className="camera-box">
-            <video ref={barcodeVideoRef} autoPlay playsInline className="camera-video" />
+            <div id="barcode-reader" style={{ width: '100%' }} />
             <div className="camera-buttons">
               <button className="button-cancel" onClick={stopBarcodeScanner}>취소</button>
             </div>
@@ -272,11 +263,11 @@ function App() {
           <img src={preview} alt="캡처된 이미지" className="preview-img" />
         )}
 
-        {barcodeMsg && !showBarcodeScanner && barcodeMsg !== '바코드를 카메라에 비춰주세요' && (
+        {barcodeMsg !== '' && !showBarcodeScanner && (
           <p className="ocr-loading">{barcodeMsg}</p>
         )}
 
-        {ocrLoading && <p className="ocr-loading">이미지에서 텍스트 인식 중...</p>}
+        {ocrLoading && <p className="ocr-loading">제품 정보 가져오는 중...</p>}
       </div>
 
       <div className="card">

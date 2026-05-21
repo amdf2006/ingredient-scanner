@@ -218,6 +218,7 @@ body {
   border-radius: 12px;
   overflow: hidden;
   background: #000;
+  position: relative;
 }
 
 .camera-video {
@@ -252,4 +253,27 @@ body {
   border-radius: 12px;
   font-size: 15px;
   cursor: pointer;
+}
+
+.barcode-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 44px;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+.barcode-line {
+  width: 100%;
+  height: 2px;
+  background: red;
+  animation: scan-line 2s linear infinite;
+}
+
+@keyframes scan-line {
+  0% { transform: translateY(-100px); }
+  100% { transform: translateY(100px); }
 }
