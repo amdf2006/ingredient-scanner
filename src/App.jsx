@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import './App.css'
 import ReactMarkdown from 'react-markdown'
 import Tesseract from 'tesseract.js'
+import { BrowserMultiFormatReader } from '@zxing/library'
 
 const LOADING_MESSAGES = [
   '성분표를 읽는 중...',
@@ -19,9 +20,13 @@ function App() {
   const [ocrLoading, setOcrLoading] = useState(false)
   const [preview, setPreview] = useState(null)
   const [showCamera, setShowCamera] = useState(false)
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false)
+  const [barcodeMsg, setBarcodeMsg] = useState('바코드를 카메라에 비춰주세요')
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
+  const barcodeVideoRef = useRef(null)
+  const barcodeReaderRef = useRef(null)
 
   useEffect(() => {
     if (!loading) return
@@ -108,6 +113,82 @@ function App() {
     setOcrLoading(false)
   }
 
+  const startBarcodeScanner = async () => {
+    setShowBarcodeScanner(true)
+    setResult('')
+    setBarcodeMsg('바코드를 카메라에 비춰주세요')
+
+    try {
+      const reader = new BrowserMultiFormatReader()
+      barcodeReaderRef.current = reader
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
+      })
+      streamRef.current = stream
+
+      setTimeout(async () => {
+        if (barcodeVideoRef.current) {
+          barcodeVideoRef.current.srcObject = stream
+          await barcodeVideoRef.current.play()
+
+          reader.decodeFromVideoElement(barcodeVideoRef.current, async (result, err) => {
+            if (result) {
+              const barcode = result.getText()
+              stopBarcodeScanner()
+              setBarcodeMsg(`바코드 인식: ${barcode}`)
+              await fetchProductByBarcode(barcode)
+            }
+          })
+        }
+      }, 100)
+    } catch (err) {
+      alert('카메라에 접근할 수 없어요.')
+      setShowBarcodeScanner(false)
+    }
+  }
+
+  const stopBarcodeScanner = () => {
+    if (barcodeReaderRef.current) {
+      barcodeReaderRef.current.reset()
+      barcodeReaderRef.current = null
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop())
+      streamRef.current = null
+    }
+    setShowBarcodeScanner(false)
+  }
+
+  const fetchProductByBarcode = async (barcode) => {
+    setOcrLoading(true)
+    setBarcodeMsg(`바코드 ${barcode} 제품 정보 가져오는 중...`)
+
+    try {
+      const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`)
+      const data = await response.json()
+
+      if (data.status === 1 && data.product) {
+        const product = data.product
+        const ingredientText = product.ingredients_text || product.ingredients_text_en || ''
+        const productName = product.product_name || '알 수 없는 제품'
+
+        if (ingredientText) {
+          setIngredients(ingredientText)
+          setBarcodeMsg(`✅ ${productName} 성분 정보를 가져왔어요!`)
+        } else {
+          setBarcodeMsg('❌ 이 제품의 성분 정보가 없어요. 직접 입력해주세요.')
+        }
+      } else {
+        setBarcodeMsg('❌ 제품을 찾을 수 없어요. 직접 입력해주세요.')
+      }
+    } catch (err) {
+      setBarcodeMsg('❌ 제품 정보를 가져오지 못했어요. 직접 입력해주세요.')
+    }
+
+    setOcrLoading(false)
+  }
+
   const analyze = async () => {
     if (!ingredients.trim()) return
     setLoading(true)
@@ -160,6 +241,13 @@ function App() {
               <button className="button-cancel" onClick={stopCamera}>취소</button>
             </div>
           </div>
+        ) : showBarcodeScanner ? (
+          <div className="camera-box">
+            <video ref={barcodeVideoRef} autoPlay playsInline className="camera-video" />
+            <div className="camera-buttons">
+              <button className="button-cancel" onClick={stopBarcodeScanner}>취소</button>
+            </div>
+          </div>
         ) : (
           <div className="upload-buttons">
             <button className="button-webcam" onClick={startCamera}>
@@ -174,11 +262,18 @@ function App() {
                 style={{ display: 'none' }}
               />
             </label>
+            <button className="button-webcam" onClick={startBarcodeScanner}>
+              📊 바코드 스캔
+            </button>
           </div>
         )}
 
-        {preview && !showCamera && (
+        {preview && !showCamera && !showBarcodeScanner && (
           <img src={preview} alt="캡처된 이미지" className="preview-img" />
+        )}
+
+        {barcodeMsg && !showBarcodeScanner && barcodeMsg !== '바코드를 카메라에 비춰주세요' && (
+          <p className="ocr-loading">{barcodeMsg}</p>
         )}
 
         {ocrLoading && <p className="ocr-loading">이미지에서 텍스트 인식 중...</p>}
