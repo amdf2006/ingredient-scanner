@@ -114,30 +114,47 @@ function App() {
 
   const scanBarcodeFromFile = async (file) => {
     return new Promise((resolve) => {
+      const img = new Image()
       const url = URL.createObjectURL(file)
-      Quagga.decodeSingle({
-        decoder: {
-          readers: [
-            'ean_reader',
-            'ean_8_reader',
-            'upc_reader',
-            'upc_e_reader',
-            'code_128_reader',
-          ]
-        },
-        locate: true,
-        src: url
-      }, async (result) => {
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        canvas.width = img.width
+        canvas.height = img.height
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0)
+        const dataUrl = canvas.toDataURL('image/jpeg', 1.0)
         URL.revokeObjectURL(url)
-        if (result && result.codeResult) {
-          const barcode = result.codeResult.code
-          setBarcodeMsg(`바코드 인식: ${barcode}`)
-          await fetchProductByBarcode(barcode)
-        } else {
-          setBarcodeMsg('❌ 바코드를 인식하지 못했어요. 다시 찍어주세요.')
-        }
-        resolve()
-      })
+
+        Quagga.decodeSingle({
+          decoder: {
+            readers: [
+              'ean_reader',
+              'ean_8_reader',
+              'upc_reader',
+              'upc_e_reader',
+              'code_128_reader',
+              'code_39_reader',
+              'code_93_reader',
+              'i2of5_reader',
+            ],
+            multiple: false
+          },
+          locate: true,
+          patchSize: 'medium',
+          halfSample: false,
+          src: dataUrl
+        }, async (result) => {
+          if (result && result.codeResult) {
+            const barcode = result.codeResult.code
+            setBarcodeMsg(`바코드 인식: ${barcode}`)
+            await fetchProductByBarcode(barcode)
+          } else {
+            setBarcodeMsg('❌ 바코드를 인식하지 못했어요. 다시 찍어주세요.')
+          }
+          resolve()
+        })
+      }
+      img.src = url
     })
   }
 
