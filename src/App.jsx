@@ -42,6 +42,32 @@ function App() {
     }
   }, [loading])
 
+  const analyzeIngredients = async (text) => {
+    if (!text.trim()) return
+    setLoading(true)
+    setResult('')
+
+    try {
+      const response = await fetch('https://ingredient-scanner-server.onrender.com/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ingredients: text })
+      })
+
+      const data = await response.json()
+      setProgress(100)
+      setTimeout(() => {
+        setResult(data.result)
+        setLoading(false)
+        setProgress(0)
+      }, 300)
+    } catch (error) {
+      setResult('서버 연결에 실패했어요. 다시 시도해주세요.')
+      setLoading(false)
+      setProgress(0)
+    }
+  }
+
   const handlePhotoCapture = async (e) => {
     const file = e.target.files[0]
     if (!file) return
@@ -55,6 +81,7 @@ function App() {
     const { data: { text } } = await Tesseract.recognize(file, 'eng')
     setIngredients(text)
     setOcrLoading(false)
+    await analyzeIngredients(text)
   }
 
   const handleImageUpload = async (e) => {
@@ -70,6 +97,7 @@ function App() {
     const { data: { text } } = await Tesseract.recognize(file, 'eng')
     setIngredients(text)
     setOcrLoading(false)
+    await analyzeIngredients(text)
   }
 
   const handleBarcodeCapture = async (e) => {
@@ -129,43 +157,24 @@ function App() {
         if (ingredientText) {
           setIngredients(ingredientText)
           setBarcodeMsg(`✅ ${productName} 성분 정보를 가져왔어요!`)
+          setOcrLoading(false)
+          await analyzeIngredients(ingredientText)
         } else {
           setBarcodeMsg('❌ 이 제품의 성분 정보가 없어요. 직접 입력해주세요.')
+          setOcrLoading(false)
         }
       } else {
         setBarcodeMsg('❌ 제품을 찾을 수 없어요. 직접 입력해주세요.')
+        setOcrLoading(false)
       }
     } catch (err) {
       setBarcodeMsg('❌ 제품 정보를 가져오지 못했어요. 직접 입력해주세요.')
+      setOcrLoading(false)
     }
-
-    setOcrLoading(false)
   }
 
   const analyze = async () => {
-    if (!ingredients.trim()) return
-    setLoading(true)
-    setResult('')
-
-    try {
-      const response = await fetch('https://ingredient-scanner-server.onrender.com/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ingredients })
-      })
-
-      const data = await response.json()
-      setProgress(100)
-      setTimeout(() => {
-        setResult(data.result)
-        setLoading(false)
-        setProgress(0)
-      }, 300)
-    } catch (error) {
-      setResult('서버 연결에 실패했어요. 다시 시도해주세요.')
-      setLoading(false)
-      setProgress(0)
-    }
+    await analyzeIngredients(ingredients)
   }
 
   return (
