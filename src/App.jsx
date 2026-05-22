@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import './App.css'
 import ReactMarkdown from 'react-markdown'
 import Tesseract from 'tesseract.js'
+import Quagga from '@ericblade/quagga2'
 
 const LOADING_MESSAGES = [
   '성분표를 읽는 중...',
@@ -24,9 +25,6 @@ function App() {
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
-  const barcodeStreamRef = useRef(null)
-  const barcodeCanvasRef = useRef(null)
-  const barcodeIntervalRef = useRef(null)
 
   useEffect(() => {
     if (!loading) return
@@ -113,64 +111,52 @@ function App() {
     setOcrLoading(false)
   }
 
-  const startBarcodeScanner = async () => {
+  const startBarcodeScanner = () => {
     setShowBarcodeScanner(true)
     setResult('')
     setBarcodeMsg('바코드를 카메라에 비춰주세요')
 
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
+    setTimeout(() => {
+      Quagga.init({
+        inputStream: {
+          name: 'Live',
+          type: 'LiveStream',
+          target: document.getElementById('barcode-scanner'),
+          constraints: {
+            facingMode: 'environment',
+            width: { min: 300 },
+            height: { min: 200 },
+          },
+        },
+        decoder: {
+          readers: [
+            'ean_reader',
+            'ean_8_reader',
+            'upc_reader',
+            'upc_e_reader',
+            'code_128_reader',
+          ]
+        },
+      }, (err) => {
+        if (err) {
+          alert('카메라에 접근할 수 없어요.')
+          setShowBarcodeScanner(false)
+          return
+        }
+        Quagga.start()
       })
-      barcodeStreamRef.current = stream
 
-      const video = document.getElementById('barcode-video')
-      if (video) {
-        video.srcObject = stream
-        await video.play()
-      }
-
-      const canvas = document.createElement('canvas')
-      barcodeCanvasRef.current = canvas
-
-      const { scanImageData } = await import('@undecaf/zbar-wasm')
-
-      barcodeIntervalRef.current = setInterval(async () => {
-        if (!video || video.readyState !== 4) return
-
-        canvas.width = video.videoWidth
-        canvas.height = video.videoHeight
-        const ctx = canvas.getContext('2d')
-        ctx.drawImage(video, 0, 0)
-
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-
-        try {
-          const results = await scanImageData(imageData)
-          if (results.length > 0) {
-            const barcode = results[0].decode()
-            stopBarcodeScanner()
-            setBarcodeMsg(`바코드 인식: ${barcode}`)
-            await fetchProductByBarcode(barcode)
-          }
-        } catch (e) {}
-      }, 300)
-
-    } catch (err) {
-      alert('카메라에 접근할 수 없어요.')
-      setShowBarcodeScanner(false)
-    }
+      Quagga.onDetected(async (data) => {
+        const barcode = data.codeResult.code
+        stopBarcodeScanner()
+        setBarcodeMsg(`바코드 인식: ${barcode}`)
+        await fetchProductByBarcode(barcode)
+      })
+    }, 200)
   }
 
   const stopBarcodeScanner = () => {
-    if (barcodeIntervalRef.current) {
-      clearInterval(barcodeIntervalRef.current)
-      barcodeIntervalRef.current = null
-    }
-    if (barcodeStreamRef.current) {
-      barcodeStreamRef.current.getTracks().forEach(track => track.stop())
-      barcodeStreamRef.current = null
-    }
+    Quagga.stop()
     setShowBarcodeScanner(false)
   }
 
@@ -257,7 +243,7 @@ function App() {
           </div>
         ) : showBarcodeScanner ? (
           <div className="camera-box" style={{ position: 'relative' }}>
-            <video id="barcode-video" autoPlay playsInline className="camera-video" />
+            <div id="barcode-scanner" style={{ width: '100%' }} />
             <div className="barcode-overlay">
               <div className="barcode-guide" />
               <div className="barcode-line" />
