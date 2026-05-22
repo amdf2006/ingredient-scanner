@@ -277,3 +277,18 @@ body {
   0% { transform: translateY(-100px); }
   100% { transform: translateY(100px); }
 }
+
+#barcode-scanner {
+  width: 100%;
+  overflow: hidden;
+}
+
+#barcode-scanner video {
+  width: 100% !important;
+  height: auto !important;
+  display: block;
+}
+
+#barcode-scanner canvas {
+  display: none !important;
+}
