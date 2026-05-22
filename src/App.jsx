@@ -20,7 +20,7 @@ function App() {
   const [ocrLoading, setOcrLoading] = useState(false)
   const [preview, setPreview] = useState(null)
   const [showCamera, setShowCamera] = useState(false)
-  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false)
+  const [cameraMode, setCameraMode] = useState('photo')
   const [barcodeMsg, setBarcodeMsg] = useState('')
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
@@ -47,11 +47,16 @@ function App() {
     }
   }, [loading])
 
-  const startCamera = async () => {
+  const startCamera = async (mode) => {
+    setCameraMode(mode)
     setShowCamera(true)
     setPreview(null)
-    setIngredients('')
-    setResult('')
+    if (mode === 'photo') {
+      setIngredients('')
+      setResult('')
+    }
+    setBarcodeMsg('')
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment' }
@@ -89,11 +94,48 @@ function App() {
     setPreview(imageUrl)
     stopCamera()
 
-    setOcrLoading(true)
-    canvas.toBlob(async (blob) => {
-      const { data: { text } } = await Tesseract.recognize(blob, 'eng')
-      setIngredients(text)
-      setOcrLoading(false)
+    if (cameraMode === 'barcode') {
+      setBarcodeMsg('바코드 인식 중...')
+      canvas.toBlob(async (blob) => {
+        const file = new File([blob], 'barcode.png', { type: 'image/png' })
+        await scanBarcodeFromFile(file)
+      })
+    } else {
+      setOcrLoading(true)
+      canvas.toBlob(async (blob) => {
+        const { data: { text } } = await Tesseract.recognize(blob, 'eng')
+        setIngredients(text)
+        setOcrLoading(false)
+      })
+    }
+  }
+
+  const scanBarcodeFromFile = async (file) => {
+    return new Promise((resolve) => {
+      const url = URL.createObjectURL(file)
+      Quagga.decodeSingle({
+        decoder: {
+          readers: [
+            'ean_reader',
+            'ean_8_reader',
+            'upc_reader',
+            'upc_e_reader',
+            'code_128_reader',
+          ]
+        },
+        locate: true,
+        src: url
+      }, async (result) => {
+        URL.revokeObjectURL(url)
+        if (result && result.codeResult) {
+          const barcode = result.codeResult.code
+          setBarcodeMsg(`바코드 인식: ${barcode}`)
+          await fetchProductByBarcode(barcode)
+        } else {
+          setBarcodeMsg('❌ 바코드를 인식하지 못했어요. 다시 찍어주세요.')
+        }
+        resolve()
+      })
     })
   }
 
@@ -109,55 +151,6 @@ function App() {
     const { data: { text } } = await Tesseract.recognize(file, 'eng')
     setIngredients(text)
     setOcrLoading(false)
-  }
-
-  const startBarcodeScanner = () => {
-    setShowBarcodeScanner(true)
-    setResult('')
-    setBarcodeMsg('바코드를 카메라에 비춰주세요')
-
-    setTimeout(() => {
-      Quagga.init({
-        inputStream: {
-          name: 'Live',
-          type: 'LiveStream',
-          target: document.getElementById('barcode-scanner'),
-          constraints: {
-            facingMode: 'environment',
-            width: { min: 300 },
-            height: { min: 200 },
-          },
-        },
-        decoder: {
-          readers: [
-            'ean_reader',
-            'ean_8_reader',
-            'upc_reader',
-            'upc_e_reader',
-            'code_128_reader',
-          ]
-        },
-      }, (err) => {
-        if (err) {
-          alert('카메라에 접근할 수 없어요.')
-          setShowBarcodeScanner(false)
-          return
-        }
-        Quagga.start()
-      })
-
-      Quagga.onDetected(async (data) => {
-        const barcode = data.codeResult.code
-        stopBarcodeScanner()
-        setBarcodeMsg(`바코드 인식: ${barcode}`)
-        await fetchProductByBarcode(barcode)
-      })
-    }, 200)
-  }
-
-  const stopBarcodeScanner = () => {
-    Quagga.stop()
-    setShowBarcodeScanner(false)
   }
 
   const fetchProductByBarcode = async (barcode) => {
@@ -236,25 +229,23 @@ function App() {
           <div className="camera-box">
             <video ref={videoRef} autoPlay playsInline className="camera-video" />
             <canvas ref={canvasRef} style={{ display: 'none' }} />
+            {cameraMode === 'barcode' && (
+              <div className="barcode-overlay">
+                <div className="barcode-guide">
+                  <div className="barcode-line" />
+                </div>
+              </div>
+            )}
             <div className="camera-buttons">
-              <button className="button-capture" onClick={capturePhoto}>📷 찍기</button>
+              <button className="button-capture" onClick={capturePhoto}>
+                {cameraMode === 'barcode' ? '📊 찍기' : '📷 찍기'}
+              </button>
               <button className="button-cancel" onClick={stopCamera}>취소</button>
-            </div>
-          </div>
-        ) : showBarcodeScanner ? (
-          <div className="camera-box" style={{ position: 'relative' }}>
-            <div id="barcode-scanner" style={{ width: '100%' }} />
-            <div className="barcode-overlay">
-              <div className="barcode-guide" />
-              <div className="barcode-line" />
-            </div>
-            <div className="camera-buttons">
-              <button className="button-cancel" onClick={stopBarcodeScanner}>취소</button>
             </div>
           </div>
         ) : (
           <div className="upload-buttons">
-            <button className="button-webcam" onClick={startCamera}>
+            <button className="button-webcam" onClick={() => startCamera('photo')}>
               📷 카메라로 찍기
             </button>
             <label className="button-upload">
@@ -266,21 +257,21 @@ function App() {
                 style={{ display: 'none' }}
               />
             </label>
-            <button className="button-webcam" onClick={startBarcodeScanner}>
+            <button className="button-webcam" onClick={() => startCamera('barcode')}>
               📊 바코드 스캔
             </button>
           </div>
         )}
 
-        {preview && !showCamera && !showBarcodeScanner && (
+        {preview && !showCamera && (
           <img src={preview} alt="캡처된 이미지" className="preview-img" />
         )}
 
-        {barcodeMsg !== '' && !showBarcodeScanner && (
+        {barcodeMsg !== '' && (
           <p className="ocr-loading">{barcodeMsg}</p>
         )}
 
-        {ocrLoading && <p className="ocr-loading">제품 정보 가져오는 중...</p>}
+        {ocrLoading && <p className="ocr-loading">처리 중...</p>}
       </div>
 
       <div className="card">
