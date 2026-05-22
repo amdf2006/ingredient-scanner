@@ -59,7 +59,10 @@ function App() {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
+        video: {
+          facingMode: 'environment',
+          advanced: [{ focusMode: 'continuous' }]
+        }
       })
       streamRef.current = stream
       setTimeout(() => {
@@ -68,8 +71,20 @@ function App() {
         }
       }, 100)
     } catch (err) {
-      alert('카메라에 접근할 수 없어요. 브라우저에서 카메라 권한을 허용해주세요.')
-      setShowCamera(false)
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' }
+        })
+        streamRef.current = stream
+        setTimeout(() => {
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream
+          }
+        }, 100)
+      } catch (err2) {
+        alert('카메라에 접근할 수 없어요. 브라우저에서 카메라 권한을 허용해주세요.')
+        setShowCamera(false)
+      }
     }
   }
 
