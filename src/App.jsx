@@ -19,12 +19,7 @@ function App() {
   const [progress, setProgress] = useState(0)
   const [ocrLoading, setOcrLoading] = useState(false)
   const [preview, setPreview] = useState(null)
-  const [showCamera, setShowCamera] = useState(false)
-  const [cameraMode, setCameraMode] = useState('photo')
   const [barcodeMsg, setBarcodeMsg] = useState('')
-  const videoRef = useRef(null)
-  const canvasRef = useRef(null)
-  const streamRef = useRef(null)
 
   useEffect(() => {
     if (!loading) return
@@ -47,82 +42,46 @@ function App() {
     }
   }, [loading])
 
-  const startCamera = async (mode) => {
-    setCameraMode(mode)
-    setShowCamera(true)
-    setPreview(null)
-    if (mode === 'photo') {
-      setIngredients('')
-      setResult('')
-    }
+  const handlePhotoCapture = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    setPreview(URL.createObjectURL(file))
+    setOcrLoading(true)
+    setIngredients('')
+    setResult('')
     setBarcodeMsg('')
 
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'environment',
-          advanced: [{ focusMode: 'continuous' }]
-        }
-      })
-      streamRef.current = stream
-      setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-        }
-      }, 100)
-    } catch (err) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' }
-        })
-        streamRef.current = stream
-        setTimeout(() => {
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream
-          }
-        }, 100)
-      } catch (err2) {
-        alert('카메라에 접근할 수 없어요. 브라우저에서 카메라 권한을 허용해주세요.')
-        setShowCamera(false)
-      }
-    }
+    const { data: { text } } = await Tesseract.recognize(file, 'eng')
+    setIngredients(text)
+    setOcrLoading(false)
   }
 
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop())
-      streamRef.current = null
-    }
-    setShowCamera(false)
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    setPreview(URL.createObjectURL(file))
+    setOcrLoading(true)
+    setIngredients('')
+    setResult('')
+    setBarcodeMsg('')
+
+    const { data: { text } } = await Tesseract.recognize(file, 'eng')
+    setIngredients(text)
+    setOcrLoading(false)
   }
 
-  const capturePhoto = async () => {
-    const video = videoRef.current
-    const canvas = canvasRef.current
-    if (!video || !canvas) return
+  const handleBarcodeCapture = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
 
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
-    canvas.getContext('2d').drawImage(video, 0, 0)
+    setPreview(URL.createObjectURL(file))
+    setBarcodeMsg('바코드 인식 중...')
+    setIngredients('')
+    setResult('')
 
-    const imageUrl = canvas.toDataURL('image/png')
-    setPreview(imageUrl)
-    stopCamera()
-
-    if (cameraMode === 'barcode') {
-      setBarcodeMsg('바코드 인식 중...')
-      canvas.toBlob(async (blob) => {
-        const file = new File([blob], 'barcode.png', { type: 'image/png' })
-        await scanBarcodeFromFile(file)
-      })
-    } else {
-      setOcrLoading(true)
-      canvas.toBlob(async (blob) => {
-        const { data: { text } } = await Tesseract.recognize(blob, 'eng')
-        setIngredients(text)
-        setOcrLoading(false)
-      })
-    }
+    await scanBarcodeFromFile(file)
   }
 
   const scanBarcodeFromFile = async (file) => {
@@ -152,20 +111,6 @@ function App() {
         resolve()
       })
     })
-  }
-
-  const handleImageUpload = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-
-    setPreview(URL.createObjectURL(file))
-    setOcrLoading(true)
-    setIngredients('')
-    setResult('')
-
-    const { data: { text } } = await Tesseract.recognize(file, 'eng')
-    setIngredients(text)
-    setOcrLoading(false)
   }
 
   const fetchProductByBarcode = async (barcode) => {
@@ -240,45 +185,39 @@ function App() {
       <div className="card">
         <label className="label">사진 촬영 / 업로드</label>
 
-        {showCamera ? (
-          <div className="camera-box">
-            <video ref={videoRef} autoPlay playsInline className="camera-video" />
-            <canvas ref={canvasRef} style={{ display: 'none' }} />
-            {cameraMode === 'barcode' && (
-              <div className="barcode-overlay">
-                <div className="barcode-guide">
-                  <div className="barcode-line" />
-                </div>
-              </div>
-            )}
-            <div className="camera-buttons">
-              <button className="button-capture" onClick={capturePhoto}>
-                {cameraMode === 'barcode' ? '📊 찍기' : '📷 찍기'}
-              </button>
-              <button className="button-cancel" onClick={stopCamera}>취소</button>
-            </div>
-          </div>
-        ) : (
-          <div className="upload-buttons">
-            <button className="button-webcam" onClick={() => startCamera('photo')}>
-              📷 카메라로 찍기
-            </button>
-            <label className="button-upload">
-              📁 사진 업로드
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                style={{ display: 'none' }}
-              />
-            </label>
-            <button className="button-webcam" onClick={() => startCamera('barcode')}>
-              📊 바코드 스캔
-            </button>
-          </div>
-        )}
+        <div className="upload-buttons">
+          <label className="button-webcam">
+            📷 카메라로 찍기
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handlePhotoCapture}
+              style={{ display: 'none' }}
+            />
+          </label>
+          <label className="button-upload">
+            📁 사진 업로드
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              style={{ display: 'none' }}
+            />
+          </label>
+          <label className="button-webcam">
+            📊 바코드 스캔
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleBarcodeCapture}
+              style={{ display: 'none' }}
+            />
+          </label>
+        </div>
 
-        {preview && !showCamera && (
+        {preview && (
           <img src={preview} alt="캡처된 이미지" className="preview-img" />
         )}
 
