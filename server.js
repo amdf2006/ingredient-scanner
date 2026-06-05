@@ -2,12 +2,13 @@ import express from 'express'
 import cors from 'cors'
 import fetch from 'node-fetch'
 import dotenv from 'dotenv'
+import Tesseract from 'tesseract.js'
 
 dotenv.config()
 
 const app = express()
 app.use(cors())
-app.use(express.json())
+app.use(express.json({ limit: '10mb' }))
 
 app.post('/analyze', async (req, res) => {
   try {
@@ -41,6 +42,24 @@ app.post('/analyze', async (req, res) => {
   } catch (error) {
     console.error('오류:', error)
     res.status(500).json({ result: '서버 오류가 발생했어요: ' + error.message })
+  }
+})
+
+app.post('/ocr', async (req, res) => {
+  try {
+    const { imageData } = req.body
+
+    const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '')
+    const buffer = Buffer.from(base64Data, 'base64')
+
+    const { data: { text } } = await Tesseract.recognize(buffer, 'eng', {
+      logger: m => console.log(m)
+    })
+
+    res.json({ text })
+  } catch (error) {
+    console.error('OCR 오류:', error)
+    res.status(500).json({ text: '', error: error.message })
   }
 })
 

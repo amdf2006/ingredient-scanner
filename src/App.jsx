@@ -78,7 +78,7 @@ function App() {
     setResult('')
     setBarcodeMsg('')
 
-    const { data: { text } } = await Tesseract.recognize(file, 'eng')
+    const text = await runOCR(file)
     setIngredients(text)
     setOcrLoading(false)
     await analyzeIngredients(text)
@@ -94,10 +94,30 @@ function App() {
     setResult('')
     setBarcodeMsg('')
 
-    const { data: { text } } = await Tesseract.recognize(file, 'eng')
+    const text = await runOCR(file)
     setIngredients(text)
     setOcrLoading(false)
     await analyzeIngredients(text)
+  }
+  const runOCR = async (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onload = async (e) => {
+        const imageData = e.target.result
+        try {
+          const response = await fetch('https://ingredient-scanner-server.onrender.com/ocr', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageData })
+          })
+          const data = await response.json()
+          resolve(data.text || '')
+        } catch (error) {
+          resolve('')
+        }
+      }
+      reader.readAsDataURL(file)
+    })
   }
 
   const handleBarcodeCapture = async (e) => {
