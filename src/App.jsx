@@ -1,8 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import './App.css'
 import ReactMarkdown from 'react-markdown'
-import Tesseract from 'tesseract.js'
-import Quagga from '@ericblade/quagga2'
 
 const LOADING_MESSAGES = [
   '성분표를 읽는 중...',
@@ -42,29 +40,83 @@ function App() {
     }
   }, [loading])
 
-  const analyzeIngredients = async (text) => {
-    if (!text.trim()) return
-    setLoading(true)
-    setResult('')
+  const runOCR = async (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onload = async (e) => {
+        const imageData = e.target.result
+        try {
+          const response = await fetch('https://ingredient-scanner-server.onrender.com/ocr', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageData })
+          })
+          const data = await response.json()
+          resolve(data.text || '')
+        } catch (error) {
+          resolve('')
+        }
+      }
+      reader.readAsDataURL(file)
+    })
+  }
+
+  const scanBarcodeWithVision = async (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onload = async (e) => {
+        const imageData = e.target.result
+        try {
+          const response = await fetch('https://ingredient-scanner-server.onrender.com/barcode', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageData })
+          })
+          const data = await response.json()
+          if (data.barcode) {
+            setBarcodeMsg(`바코드 인식: ${data.barcode}`)
+            await fetchProductByBarcode(data.barcode)
+          } else {
+            setBarcodeMsg('❌ 바코드를 인식하지 못했어요. 다시 찍어주세요.')
+          }
+        } catch (error) {
+          setBarcodeMsg('❌ 바코드 인식 중 오류가 발생했어요.')
+        }
+        resolve()
+      }
+      reader.readAsDataURL(file)
+    })
+  }
+
+  const fetchProductByBarcode = async (barcode) => {
+    setOcrLoading(true)
+    setBarcodeMsg('제품 정보 가져오는 중...')
 
     try {
-      const response = await fetch('https://ingredient-scanner-server.onrender.com/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ingredients: text })
-      })
-
+      const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`)
       const data = await response.json()
-      setProgress(100)
-      setTimeout(() => {
-        setResult(data.result)
-        setLoading(false)
-        setProgress(0)
-      }, 300)
-    } catch (error) {
-      setResult('서버 연결에 실패했어요. 다시 시도해주세요.')
-      setLoading(false)
-      setProgress(0)
+
+      if (data.status === 1 && data.product) {
+        const product = data.product
+        const ingredientText = product.ingredients_text || product.ingredients_text_en || ''
+        const productName = product.product_name || '알 수 없는 제품'
+
+        if (ingredientText) {
+          setIngredients(ingredientText)
+          setBarcodeMsg(`✅ ${productName} 성분 정보를 가져왔어요!`)
+          setOcrLoading(false)
+          await analyzeIngredients(ingredientText)
+        } else {
+          setBarcodeMsg('❌ 이 제품의 성분 정보가 없어요. 직접 입력해주세요.')
+          setOcrLoading(false)
+        }
+      } else {
+        setBarcodeMsg('❌ 제품을 찾을 수 없어요. 직접 입력해주세요.')
+        setOcrLoading(false)
+      }
+    } catch (err) {
+      setBarcodeMsg('❌ 제품 정보를 가져오지 못했어요. 직접 입력해주세요.')
+      setOcrLoading(false)
     }
   }
 
@@ -99,26 +151,6 @@ function App() {
     setOcrLoading(false)
     await analyzeIngredients(text)
   }
-  const runOCR = async (file) => {
-    return new Promise((resolve) => {
-      const reader = new FileReader()
-      reader.onload = async (e) => {
-        const imageData = e.target.result
-        try {
-          const response = await fetch('https://ingredient-scanner-server.onrender.com/ocr', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imageData })
-          })
-          const data = await response.json()
-          resolve(data.text || '')
-        } catch (error) {
-          resolve('')
-        }
-      }
-      reader.readAsDataURL(file)
-    })
-  }
 
   const handleBarcodeCapture = async (e) => {
     const file = e.target.files[0]
@@ -129,84 +161,32 @@ function App() {
     setIngredients('')
     setResult('')
 
-    await scanBarcodeFromFile(file)
+    await scanBarcodeWithVision(file)
   }
 
-  const scanBarcodeFromFile = async (file) => {
-    return new Promise((resolve) => {
-      const img = new Image()
-      const url = URL.createObjectURL(file)
-      img.onload = () => {
-        const canvas = document.createElement('canvas')
-        canvas.width = img.width
-        canvas.height = img.height
-        const ctx = canvas.getContext('2d')
-        ctx.drawImage(img, 0, 0)
-        const dataUrl = canvas.toDataURL('image/jpeg', 1.0)
-        URL.revokeObjectURL(url)
-
-        Quagga.decodeSingle({
-          decoder: {
-            readers: [
-              'ean_reader',
-              'ean_8_reader',
-              'upc_reader',
-              'upc_e_reader',
-              'code_128_reader',
-              'code_39_reader',
-              'code_93_reader',
-              'i2of5_reader',
-            ],
-            multiple: false
-          },
-          locate: true,
-          patchSize: 'medium',
-          halfSample: false,
-          src: dataUrl
-        }, async (result) => {
-          if (result && result.codeResult) {
-            const barcode = result.codeResult.code
-            setBarcodeMsg(`바코드 인식: ${barcode}`)
-            await fetchProductByBarcode(barcode)
-          } else {
-            setBarcodeMsg('❌ 바코드를 인식하지 못했어요. 다시 찍어주세요.')
-          }
-          resolve()
-        })
-      }
-      img.src = url
-    })
-  }
-
-  const fetchProductByBarcode = async (barcode) => {
-    setOcrLoading(true)
-    setBarcodeMsg('제품 정보 가져오는 중...')
+  const analyzeIngredients = async (text) => {
+    if (!text.trim()) return
+    setLoading(true)
+    setResult('')
 
     try {
-      const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`)
+      const response = await fetch('https://ingredient-scanner-server.onrender.com/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ingredients: text })
+      })
+
       const data = await response.json()
-
-      if (data.status === 1 && data.product) {
-        const product = data.product
-        const ingredientText = product.ingredients_text || product.ingredients_text_en || ''
-        const productName = product.product_name || '알 수 없는 제품'
-
-        if (ingredientText) {
-          setIngredients(ingredientText)
-          setBarcodeMsg(`✅ ${productName} 성분 정보를 가져왔어요!`)
-          setOcrLoading(false)
-          await analyzeIngredients(ingredientText)
-        } else {
-          setBarcodeMsg('❌ 이 제품의 성분 정보가 없어요. 직접 입력해주세요.')
-          setOcrLoading(false)
-        }
-      } else {
-        setBarcodeMsg('❌ 제품을 찾을 수 없어요. 직접 입력해주세요.')
-        setOcrLoading(false)
-      }
-    } catch (err) {
-      setBarcodeMsg('❌ 제품 정보를 가져오지 못했어요. 직접 입력해주세요.')
-      setOcrLoading(false)
+      setProgress(100)
+      setTimeout(() => {
+        setResult(data.result)
+        setLoading(false)
+        setProgress(0)
+      }, 300)
+    } catch (error) {
+      setResult('서버 연결에 실패했어요. 다시 시도해주세요.')
+      setLoading(false)
+      setProgress(0)
     }
   }
 

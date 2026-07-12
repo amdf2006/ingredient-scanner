@@ -77,6 +77,40 @@ app.post('/ocr', async (req, res) => {
   }
 })
 
+app.post('/barcode', async (req, res) => {
+  try {
+    const { imageData } = req.body
+    const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '')
+
+    const response = await fetch(
+      `https://vision.googleapis.com/v1/images:annotate?key=${process.env.GOOGLE_VISION_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requests: [{
+            image: { content: base64Data },
+            features: [{ type: 'BARCODE_DETECTION', maxResults: 1 }]
+          }]
+        })
+      }
+    )
+
+    const data = await response.json()
+    console.log('Barcode API 응답:', JSON.stringify(data))
+
+    if (data.responses && data.responses[0] && data.responses[0].barcodeAnnotations) {
+      const barcode = data.responses[0].barcodeAnnotations[0].rawValue
+      res.json({ barcode })
+    } else {
+      res.json({ barcode: null })
+    }
+  } catch (error) {
+    console.error('바코드 오류:', error)
+    res.status(500).json({ barcode: null, error: error.message })
+  }
+})
+
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
   console.log(`서버 실행 중: http://localhost:${PORT}`)
