@@ -2,7 +2,6 @@ import express from 'express'
 import cors from 'cors'
 import fetch from 'node-fetch'
 import dotenv from 'dotenv'
-import Tesseract from 'tesseract.js'
 
 dotenv.config()
 
@@ -32,7 +31,6 @@ app.post('/analyze', async (req, res) => {
     })
 
     const data = await response.json()
-    console.log('API 응답:', JSON.stringify(data))
 
     if (data.content && data.content[0]) {
       res.json({ result: data.content[0].text })
@@ -48,15 +46,31 @@ app.post('/analyze', async (req, res) => {
 app.post('/ocr', async (req, res) => {
   try {
     const { imageData } = req.body
-
     const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '')
-    const buffer = Buffer.from(base64Data, 'base64')
 
-    const { data: { text } } = await Tesseract.recognize(buffer, 'eng', {
-      logger: m => console.log(m)
-    })
+    const response = await fetch(
+      `https://vision.googleapis.com/v1/images:annotate?key=${process.env.GOOGLE_VISION_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requests: [{
+            image: { content: base64Data },
+            features: [{ type: 'TEXT_DETECTION', maxResults: 1 }]
+          }]
+        })
+      }
+    )
 
-    res.json({ text })
+    const data = await response.json()
+    console.log('Vision API 응답:', JSON.stringify(data))
+
+    if (data.responses && data.responses[0] && data.responses[0].fullTextAnnotation) {
+      const text = data.responses[0].fullTextAnnotation.text
+      res.json({ text })
+    } else {
+      res.json({ text: '' })
+    }
   } catch (error) {
     console.error('OCR 오류:', error)
     res.status(500).json({ text: '', error: error.message })

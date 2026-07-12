@@ -105,7 +105,7 @@ function App() {
       reader.onload = async (e) => {
         const imageData = e.target.result
         try {
-          const response = await fetch('https://ingredient-scanner-server.onrender.com/ocr', {
+          const response = await fetch('http://localhost:3001/ocr', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ imageData })
