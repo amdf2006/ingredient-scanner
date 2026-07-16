@@ -292,3 +292,57 @@ body {
 #barcode-scanner canvas {
   display: none !important;
 }
+
+/* 글씨 크기 2배 키우기 */
+.container {
+  font-size: 20px;
+}
+
+.header-title {
+  font-size: 40px !important;
+}
+
+.header-subtitle {
+  font-size: 18px !important;
+}
+
+.label {
+  font-size: 18px !important;
+}
+
+.textarea {
+  font-size: 18px !important;
+}
+
+.button,
+.button-webcam,
+.button-upload {
+  font-size: 18px !important;
+}
+
+.result-text,
+.result-text p,
+.result-text li {
+  font-size: 18px !important;
+  line-height: 1.7 !important;
+}
+
+.result-text h1 {
+  font-size: 28px !important;
+}
+
+.result-text h2 {
+  font-size: 24px !important;
+}
+
+.result-text h3 {
+  font-size: 20px !important;
+}
+
+.result-text table {
+  font-size: 16px !important;
+}
+
+.ocr-loading {
+  font-size: 16px !important;
+}

@@ -21,9 +21,10 @@ function App() {
   const [preview, setPreview] = useState(null)
   const [barcodeMsg, setBarcodeMsg] = useState('')
   const [scannerOpen, setScannerOpen] = useState(false)
+  const [analyzedText, setAnalyzedText] = useState('') // 마지막으로 분석한 텍스트
 
-  // 실시간 바코드 스캐너용 refs
   const videoRef = useRef(null)
+  const streamRef = useRef(null)
   const controlsRef = useRef(null)
   const lastCodeRef = useRef(null)
   const hitCountRef = useRef(0)
@@ -54,7 +55,6 @@ function App() {
   useEffect(() => {
     if (!scannerOpen) return
 
-    // 상태 초기화
     lastCodeRef.current = null
     hitCountRef.current = 0
     confirmedRef.current = false
@@ -78,8 +78,8 @@ function App() {
             audio: false,
             video: {
               facingMode: 'environment',
-              width: { ideal: 1280 },
-              height: { ideal: 720 },
+              width: { ideal: 1920 },
+              height: { ideal: 1080 },
             },
           },
           videoRef.current,
@@ -87,7 +87,6 @@ function App() {
             if (confirmedRef.current || !result) return
             const code = result.getText()
 
-            // 같은 코드가 2번 연속 읽혀야 확정 (오독 방지)
             if (code === lastCodeRef.current) {
               hitCountRef.current += 1
             } else {
@@ -110,6 +109,8 @@ function App() {
           return
         }
         controlsRef.current = controls
+        // video 스트림을 별도로 저장 (수동 촬영용)
+        streamRef.current = videoRef.current?.srcObject
       } catch (e) {
         console.error('카메라 시작 실패:', e)
         setBarcodeMsg('❌ 카메라를 사용할 수 없어요. 브라우저 카메라 권한을 확인해주세요.')
@@ -125,25 +126,58 @@ function App() {
     }
   }, [scannerOpen])
 
-  const runOCR = async (file) => {
-    return new Promise((resolve) => {
-      const reader = new FileReader()
-      reader.onload = async (e) => {
-        const imageData = e.target.result
-        try {
-          const response = await fetch('https://ingredient-scanner-server.onrender.com/ocr', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imageData })
-          })
-          const data = await response.json()
-          resolve(data.text || '')
-        } catch (error) {
-          resolve('')
-        }
+  // 화면 탭 시 그 지점에 초점 맞추기 (iOS Safari 트릭)
+  const handleVideoTap = async () => {
+    const stream = videoRef.current?.srcObject
+    if (!stream) return
+    const [track] = stream.getVideoTracks()
+    if (!track) return
+    try {
+      // 초점 재설정 시도
+      await track.applyConstraints({
+        advanced: [{ focusMode: 'continuous' }]
+      })
+    } catch (e) {
+      // 지원 안 하는 브라우저는 무시
+    }
+  }
+
+  // 수동 촬영: 현재 비디오 프레임을 캡처해서 서버로 보냄
+  const captureBarcode = async () => {
+    if (!videoRef.current) return
+
+    setBarcodeMsg('사진 인식 중...')
+
+    // 비디오 프레임을 캔버스에 그려서 이미지로 변환
+    const video = videoRef.current
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(video, 0, 0)
+    const imageData = canvas.toDataURL('image/jpeg', 0.95)
+
+    // 스캐너 닫기
+    controlsRef.current?.stop()
+    setScannerOpen(false)
+
+    // 서버로 보내서 Google Vision으로 인식
+    try {
+      const response = await fetch('https://ingredient-scanner-server.onrender.com/barcode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageData })
+      })
+      const data = await response.json()
+      if (data.barcode) {
+        setBarcodeMsg(`바코드 인식: ${data.barcode}`)
+        await fetchProductByBarcode(data.barcode)
+      } else {
+        setBarcodeMsg('❌ 바코드를 인식하지 못했어요. 다시 시도하거나 성분표를 카메라로 찍어주세요.')
       }
-      reader.readAsDataURL(file)
-    })
+    } catch (error) {
+      setBarcodeMsg('❌ 바코드 인식 중 오류가 발생했어요.')
+    }
   }
 
   const fetchProductByBarcode = async (barcode) => {
@@ -178,6 +212,27 @@ function App() {
     }
   }
 
+  const runOCR = async (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onload = async (e) => {
+        const imageData = e.target.result
+        try {
+          const response = await fetch('https://ingredient-scanner-server.onrender.com/ocr', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageData })
+          })
+          const data = await response.json()
+          resolve(data.text || '')
+        } catch (error) {
+          resolve('')
+        }
+      }
+      reader.readAsDataURL(file)
+    })
+  }
+
   const handlePhotoCapture = async (e) => {
     const file = e.target.files[0]
     if (!file) return
@@ -186,6 +241,7 @@ function App() {
     setOcrLoading(true)
     setIngredients('')
     setResult('')
+    setAnalyzedText('')
     setBarcodeMsg('')
 
     const text = await runOCR(file)
@@ -202,6 +258,7 @@ function App() {
     setOcrLoading(true)
     setIngredients('')
     setResult('')
+    setAnalyzedText('')
     setBarcodeMsg('')
 
     const text = await runOCR(file)
@@ -214,6 +271,7 @@ function App() {
     setPreview(null)
     setIngredients('')
     setResult('')
+    setAnalyzedText('')
     setBarcodeMsg('바코드를 카메라에 비춰주세요...')
     setScannerOpen(true)
   }
@@ -239,6 +297,7 @@ function App() {
       setProgress(100)
       setTimeout(() => {
         setResult(data.result)
+        setAnalyzedText(text) // 분석 완료 기록
         setLoading(false)
         setProgress(0)
       }, 300)
@@ -253,11 +312,15 @@ function App() {
     await analyzeIngredients(ingredients)
   }
 
+  // 분석 완료 상태: 결과가 있고, 텍스트가 마지막 분석 때와 같을 때
+  const isAnalyzed = result && ingredients.trim() === analyzedText.trim()
+
   return (
     <div className="container">
       {loading && (
         <div className="progress-bar">
           <div className="progress-fill" style={{ width: `${progress}%` }} />
+          <div style={styles.progressLabel}>{progress}%</div>
         </div>
       )}
 
@@ -303,23 +366,40 @@ function App() {
         {scannerOpen && (
           <div style={styles.scannerOverlay}>
             <div style={styles.scannerBox}>
-              <video ref={videoRef} style={styles.scannerVideo} muted playsInline />
+              <video
+                ref={videoRef}
+                style={styles.scannerVideo}
+                muted
+                playsInline
+                onClick={handleVideoTap}
+              />
               <div style={styles.scannerGuide}>
                 <div style={styles.scannerFrame}>
                   <div style={styles.scanLine} />
                 </div>
                 <p style={styles.scannerHint}>
-                  바코드를 사각형 안에 가로로 맞춰주세요.<br />
-                  병은 천천히 돌려보세요.
+                  자동 인식이 안 되면 아래 <b>촬영</b> 버튼을 눌러주세요.<br />
+                  화면을 탭하면 초점이 다시 맞춰집니다.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={closeBarcodeScanner}
-                style={styles.scannerClose}
-              >
-                ✕ 닫기
-              </button>
+
+              {/* 촬영 + 닫기 버튼 하단 */}
+              <div style={styles.scannerControls}>
+                <button
+                  type="button"
+                  onClick={closeBarcodeScanner}
+                  style={styles.scannerCloseBtn}
+                >
+                  ✕ 닫기
+                </button>
+                <button
+                  type="button"
+                  onClick={captureBarcode}
+                  style={styles.scannerCaptureBtn}
+                >
+                  📸 촬영
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -347,14 +427,15 @@ function App() {
         <button
           className={`button ${loading ? 'button-loading' : ''}`}
           onClick={analyze}
-          disabled={loading || ocrLoading}
+          disabled={loading || ocrLoading || isAnalyzed}
+          style={isAnalyzed ? styles.analyzedButton : undefined}
         >
           {loading ? (
             <span className="loading-content">
               <span className="spinner" />
-              {loadingMsg}
+              {loadingMsg} ({progress}%)
             </span>
-          ) : '성분 분석하기'}
+          ) : isAnalyzed ? '✅ 성분 분석 완료' : '성분 분석하기'}
         </button>
       </div>
 
@@ -371,6 +452,14 @@ function App() {
 }
 
 const styles = {
+  progressLabel: {
+    position: 'absolute',
+    top: 0,
+    right: 8,
+    fontSize: 12,
+    color: '#333',
+    fontWeight: 600,
+  },
   scannerOverlay: {
     position: 'fixed',
     inset: 0,
@@ -391,10 +480,14 @@ const styles = {
     borderRadius: 12,
     background: '#000',
     display: 'block',
+    cursor: 'pointer',
   },
   scannerGuide: {
     position: 'absolute',
-    inset: 0,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 80,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
@@ -420,24 +513,46 @@ const styles = {
   scannerHint: {
     marginTop: 16,
     color: '#fff',
-    fontSize: 14,
+    fontSize: 13,
     textAlign: 'center',
     textShadow: '0 1px 3px rgba(0,0,0,0.9)',
     padding: '0 20px',
     lineHeight: 1.5,
   },
-  scannerClose: {
+  scannerControls: {
     position: 'absolute',
-    top: 12,
-    right: 12,
-    background: 'rgba(255,255,255,0.95)',
+    bottom: 12,
+    left: 0,
+    right: 0,
+    display: 'flex',
+    justifyContent: 'center',
+    gap: 12,
+    padding: '0 16px',
+  },
+  scannerCloseBtn: {
+    background: 'rgba(255,255,255,0.9)',
     color: '#111',
     border: 'none',
-    borderRadius: 20,
-    padding: '8px 14px',
-    fontSize: 14,
+    borderRadius: 24,
+    padding: '12px 20px',
+    fontSize: 15,
     fontWeight: 600,
     cursor: 'pointer',
+  },
+  scannerCaptureBtn: {
+    background: '#111',
+    color: '#fff',
+    border: '3px solid #fff',
+    borderRadius: 24,
+    padding: '12px 28px',
+    fontSize: 16,
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+  analyzedButton: {
+    background: '#4caf50',
+    color: '#fff',
+    cursor: 'not-allowed',
   },
 }
 
