@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './App.css'
 import ReactMarkdown from 'react-markdown'
 
@@ -19,6 +19,11 @@ function App() {
   const [preview, setPreview] = useState(null)
   const [barcodeMsg, setBarcodeMsg] = useState('')
   const [analyzedText, setAnalyzedText] = useState('')
+  const [cameraOpen, setCameraOpen] = useState(false)
+  const [cameraMode, setCameraMode] = useState('photo') // 'photo' or 'barcode'
+
+  const videoRef = useRef(null)
+  const streamRef = useRef(null)
 
   useEffect(() => {
     if (!loading) return
@@ -41,52 +46,119 @@ function App() {
     }
   }, [loading])
 
-  const runOCR = async (file) => {
-    return new Promise((resolve) => {
-      const reader = new FileReader()
-      reader.onload = async (e) => {
-        const imageData = e.target.result
+  // 카메라 시작 (후면 강제)
+  useEffect(() => {
+    if (!cameraOpen) return
+
+    const startCamera = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            facingMode: { exact: 'environment' },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          },
+        })
+        streamRef.current = stream
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+        }
+      } catch (e) {
+        // exact 실패 시 일반 environment로 재시도
         try {
-          const response = await fetch('https://ingredient-scanner-server.onrender.com/ocr', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imageData })
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
           })
-          const data = await response.json()
-          resolve(data.text || '')
-        } catch (error) {
-          resolve('')
+          streamRef.current = stream
+          if (videoRef.current) videoRef.current.srcObject = stream
+        } catch (err) {
+          console.error('카메라 오류:', err)
+          setBarcodeMsg('❌ 카메라를 사용할 수 없어요. 브라우저 권한을 확인해주세요.')
+          setCameraOpen(false)
         }
       }
-      reader.readAsDataURL(file)
-    })
+    }
+
+    startCamera()
+
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop())
+        streamRef.current = null
+      }
+    }
+  }, [cameraOpen])
+
+  const openCamera = (mode) => {
+    setPreview(null)
+    setIngredients('')
+    setResult('')
+    setAnalyzedText('')
+    setBarcodeMsg('')
+    setCameraMode(mode)
+    setCameraOpen(true)
   }
 
-  const scanBarcode = async (file) => {
-    return new Promise((resolve) => {
-      const reader = new FileReader()
-      reader.onload = async (e) => {
-        const imageData = e.target.result
-        try {
-          const response = await fetch('https://ingredient-scanner-server.onrender.com/barcode', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imageData })
-          })
-          const data = await response.json()
-          if (data.barcode) {
-            setBarcodeMsg(`✅ 바코드 인식: ${data.barcode}`)
-            await fetchProductByBarcode(data.barcode)
-          } else {
-            setBarcodeMsg('❌ 바코드를 인식하지 못했어요. 더 선명하게 다시 찍어주세요.')
-          }
-        } catch (error) {
-          setBarcodeMsg('❌ 바코드 인식 중 오류가 발생했어요.')
+  const closeCamera = () => {
+    setCameraOpen(false)
+  }
+
+  // 촬영 후 처리
+  const takePhoto = async () => {
+    if (!videoRef.current) return
+    const video = videoRef.current
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(video, 0, 0)
+    const imageData = canvas.toDataURL('image/jpeg', 0.95)
+
+    // 미리보기 설정
+    setPreview(imageData)
+
+    // 카메라 닫기
+    setCameraOpen(false)
+
+    if (cameraMode === 'barcode') {
+      // 바코드 인식
+      setBarcodeMsg('바코드 인식 중...')
+      try {
+        const response = await fetch('https://ingredient-scanner-server.onrender.com/barcode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageData })
+        })
+        const data = await response.json()
+        if (data.barcode) {
+          setBarcodeMsg(`✅ 바코드 인식: ${data.barcode}`)
+          await fetchProductByBarcode(data.barcode)
+        } else {
+          setBarcodeMsg('❌ 바코드를 인식하지 못했어요. 더 선명하게 다시 찍어주세요.')
         }
-        resolve()
+      } catch (error) {
+        setBarcodeMsg('❌ 바코드 인식 중 오류가 발생했어요.')
       }
-      reader.readAsDataURL(file)
-    })
+    } else {
+      // 성분표 OCR
+      setOcrLoading(true)
+      try {
+        const response = await fetch('https://ingredient-scanner-server.onrender.com/ocr', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageData })
+        })
+        const data = await response.json()
+        const text = data.text || ''
+        setIngredients(text)
+        setOcrLoading(false)
+        await analyzeIngredients(text)
+      } catch (error) {
+        setOcrLoading(false)
+      }
+    }
   }
 
   const fetchProductByBarcode = async (barcode) => {
@@ -121,51 +193,37 @@ function App() {
     }
   }
 
-  const handlePhotoCapture = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-
-    setPreview(URL.createObjectURL(file))
-    setOcrLoading(true)
-    setIngredients('')
-    setResult('')
-    setAnalyzedText('')
-    setBarcodeMsg('')
-
-    const text = await runOCR(file)
-    setIngredients(text)
-    setOcrLoading(false)
-    await analyzeIngredients(text)
-  }
-
+  // 갤러리에서 업로드 (성분표만)
   const handleImageUpload = async (e) => {
     const file = e.target.files[0]
     if (!file) return
 
-    setPreview(URL.createObjectURL(file))
-    setOcrLoading(true)
-    setIngredients('')
-    setResult('')
-    setAnalyzedText('')
-    setBarcodeMsg('')
+    const reader = new FileReader()
+    reader.onload = async (ev) => {
+      const imageData = ev.target.result
+      setPreview(imageData)
+      setOcrLoading(true)
+      setIngredients('')
+      setResult('')
+      setAnalyzedText('')
+      setBarcodeMsg('')
 
-    const text = await runOCR(file)
-    setIngredients(text)
-    setOcrLoading(false)
-    await analyzeIngredients(text)
-  }
-
-  const handleBarcodeCapture = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-
-    setPreview(URL.createObjectURL(file))
-    setBarcodeMsg('바코드 인식 중...')
-    setIngredients('')
-    setResult('')
-    setAnalyzedText('')
-
-    await scanBarcode(file)
+      try {
+        const response = await fetch('https://ingredient-scanner-server.onrender.com/ocr', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageData })
+        })
+        const data = await response.json()
+        const text = data.text || ''
+        setIngredients(text)
+        setOcrLoading(false)
+        await analyzeIngredients(text)
+      } catch (error) {
+        setOcrLoading(false)
+      }
+    }
+    reader.readAsDataURL(file)
   }
 
   const analyzeIngredients = async (text) => {
@@ -219,15 +277,9 @@ function App() {
         <label className="label">사진 촬영 / 업로드</label>
 
         <div className="upload-buttons">
-          <label className="button-webcam">
+          <button type="button" className="button-webcam" onClick={() => openCamera('photo')}>
             📷 카메라로 찍기
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handlePhotoCapture}
-              style={{ display: 'none' }}
-            />
-          </label>
+          </button>
           <label className="button-upload">
             📁 사진 업로드
             <input
@@ -237,16 +289,32 @@ function App() {
               style={{ display: 'none' }}
             />
           </label>
-          <label className="button-webcam">
+          <button type="button" className="button-webcam" onClick={() => openCamera('barcode')}>
             📊 바코드 촬영
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleBarcodeCapture}
-              style={{ display: 'none' }}
-            />
-          </label>
+          </button>
         </div>
+
+        {/* 자체 카메라 화면 */}
+        {cameraOpen && (
+          <div style={styles.overlay}>
+            <div style={styles.cameraBox}>
+              <video ref={videoRef} style={styles.video} autoPlay muted playsInline />
+              <p style={styles.hint}>
+                {cameraMode === 'barcode'
+                  ? '바코드에 초점이 맞을 때까지 기다린 후 촬영하세요.'
+                  : '성분표에 초점이 맞을 때까지 기다린 후 촬영하세요.'}
+              </p>
+              <div style={styles.controls}>
+                <button type="button" onClick={closeCamera} style={styles.closeBtn}>
+                  ✕ 닫기
+                </button>
+                <button type="button" onClick={takePhoto} style={styles.captureBtn}>
+                  📸 촬영
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {preview && (
           <img src={preview} alt="캡처된 이미지" className="preview-img" />
@@ -293,6 +361,64 @@ function App() {
       )}
     </div>
   )
+}
+
+const styles = {
+  overlay: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.95)',
+    zIndex: 9999,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  cameraBox: {
+    position: 'relative',
+    width: '100%',
+    maxWidth: 480,
+  },
+  video: {
+    width: '100%',
+    borderRadius: 12,
+    background: '#000',
+    display: 'block',
+  },
+  hint: {
+    color: '#fff',
+    fontSize: 15,
+    textAlign: 'center',
+    marginTop: 16,
+    padding: '0 20px',
+    lineHeight: 1.5,
+  },
+  controls: {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: 16,
+    marginTop: 20,
+  },
+  closeBtn: {
+    background: 'rgba(255,255,255,0.9)',
+    color: '#111',
+    border: 'none',
+    borderRadius: 24,
+    padding: '14px 24px',
+    fontSize: 16,
+    fontWeight: 600,
+    cursor: 'pointer',
+  },
+  captureBtn: {
+    background: '#111',
+    color: '#fff',
+    border: '3px solid #fff',
+    borderRadius: 24,
+    padding: '14px 32px',
+    fontSize: 17,
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
 }
 
 export default App
