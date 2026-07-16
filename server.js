@@ -16,21 +16,7 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
 // Anthropic API 호출 (자동 재시도 포함)
 async function callAnthropicAPI(ingredients, maxRetries = 3) {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': process.env.ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01'
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-5',
-          max_tokens: 1000,
-          messages: [{
-            role: 'user',
-            content: `다음 성분표를 분석해줘. 각 성분마다 위험도(위험/주의/안전)와 짧은 설명을 붙여줘.
+  const prompt = `다음 성분표를 분석해줘. 각 성분마다 위험도(위험/주의/안전)와 짧은 설명을 붙여줘.
 
 반드시 아래 JSON 형식으로만 답변하고, JSON 앞뒤에 다른 설명은 절대 넣지 마.
 
@@ -52,7 +38,24 @@ async function callAnthropicAPI(ingredients, maxRetries = 3) {
 - description은 30자 이내로 간결하게
 - 물, 향료 같은 흔한 성분도 반드시 포함
 
-성분
+성분표:
+${ingredients}`
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-5',
+          max_tokens: 2000,
+          messages: [{
+            role: 'user',
+            content: prompt
           }]
         })
       })
