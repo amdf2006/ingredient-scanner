@@ -91,34 +91,42 @@ function App() {
 
   const fetchProductByBarcode = async (barcode) => {
     setOcrLoading(true)
-    setBarcodeMsg('제품 정보 가져오는 중...')
 
-    try {
-      const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`)
-      const data = await response.json()
+    // 조회할 데이터베이스 목록 (순서대로 시도)
+    const databases = [
+      { name: 'Open Food Facts', url: `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`, category: '식품' },
+      { name: 'Open Beauty Facts', url: `https://world.openbeautyfacts.org/api/v0/product/${barcode}.json`, category: '화장품/세제' },
+      { name: 'Open Product Facts', url: `https://world.openproductsfacts.org/api/v0/product/${barcode}.json`, category: '일반 제품' },
+    ]
 
-      if (data.status === 1 && data.product) {
-        const product = data.product
-        const ingredientText = product.ingredients_text || product.ingredients_text_en || ''
-        const productName = product.product_name || '알 수 없는 제품'
+    for (const db of databases) {
+      setBarcodeMsg(`${db.category} 데이터베이스 조회 중...`)
 
-        if (ingredientText) {
-          setIngredients(ingredientText)
-          setBarcodeMsg(`✅ ${productName} 성분 정보를 가져왔어요!`)
-          setOcrLoading(false)
-          await analyzeIngredients(ingredientText)
-        } else {
-          setBarcodeMsg('❌ 이 제품의 성분 정보가 없어요. 성분표를 카메라로 찍어주세요.')
-          setOcrLoading(false)
+      try {
+        const response = await fetch(db.url)
+        const data = await response.json()
+
+        if (data.status === 1 && data.product) {
+          const product = data.product
+          const ingredientText = product.ingredients_text || product.ingredients_text_en || ''
+          const productName = product.product_name || product.product_name_en || '알 수 없는 제품'
+
+          if (ingredientText) {
+            setIngredients(ingredientText)
+            setBarcodeMsg(`✅ ${productName} (${db.category}) - 성분 정보를 가져왔어요!`)
+            setOcrLoading(false)
+            await analyzeIngredients(ingredientText)
+            return
+          }
         }
-      } else {
-        setBarcodeMsg('❌ 제품을 찾을 수 없어요. 성분표를 카메라로 찍어주세요.')
-        setOcrLoading(false)
+      } catch (err) {
+        console.error(`${db.name} 조회 오류:`, err)
       }
-    } catch (err) {
-      setBarcodeMsg('❌ 제품 정보를 가져오지 못했어요. 성분표를 카메라로 찍어주세요.')
-      setOcrLoading(false)
     }
+
+    // 모든 DB에서 찾지 못함
+    setBarcodeMsg('❌ 어느 데이터베이스에도 이 제품이 등록되어 있지 않아요. 성분표를 카메라로 직접 찍어주세요.')
+    setOcrLoading(false)
   }
 
   const handlePhotoCapture = async (e) => {
