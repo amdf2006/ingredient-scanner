@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './App.css'
 import ReactMarkdown from 'react-markdown'
+import { BrowserMultiFormatReader } from '@zxing/browser'
+import { DecodeHintType, BarcodeFormat } from '@zxing/library'
 
 const LOADING_MESSAGES = [
   '성분표를 읽는 중...',
@@ -18,6 +20,14 @@ function App() {
   const [ocrLoading, setOcrLoading] = useState(false)
   const [preview, setPreview] = useState(null)
   const [barcodeMsg, setBarcodeMsg] = useState('')
+  const [scannerOpen, setScannerOpen] = useState(false)
+
+  // 실시간 바코드 스캐너용 refs
+  const videoRef = useRef(null)
+  const controlsRef = useRef(null)
+  const lastCodeRef = useRef(null)
+  const hitCountRef = useRef(0)
+  const confirmedRef = useRef(false)
 
   useEffect(() => {
     if (!loading) return
@@ -40,6 +50,81 @@ function App() {
     }
   }, [loading])
 
+  // 실시간 바코드 스캐너 시작
+  useEffect(() => {
+    if (!scannerOpen) return
+
+    // 상태 초기화
+    lastCodeRef.current = null
+    hitCountRef.current = 0
+    confirmedRef.current = false
+
+    const hints = new Map()
+    hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+      BarcodeFormat.EAN_13,
+      BarcodeFormat.UPC_A,
+      BarcodeFormat.UPC_E,
+      BarcodeFormat.EAN_8,
+    ])
+    hints.set(DecodeHintType.TRY_HARDER, true)
+
+    const reader = new BrowserMultiFormatReader(hints)
+    let cancelled = false
+
+    const start = async () => {
+      try {
+        const controls = await reader.decodeFromConstraints(
+          {
+            audio: false,
+            video: {
+              facingMode: 'environment',
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            },
+          },
+          videoRef.current,
+          (result) => {
+            if (confirmedRef.current || !result) return
+            const code = result.getText()
+
+            // 같은 코드가 2번 연속 읽혀야 확정 (오독 방지)
+            if (code === lastCodeRef.current) {
+              hitCountRef.current += 1
+            } else {
+              lastCodeRef.current = code
+              hitCountRef.current = 1
+            }
+
+            if (hitCountRef.current >= 2) {
+              confirmedRef.current = true
+              if (navigator.vibrate) navigator.vibrate(80)
+              controlsRef.current?.stop()
+              setScannerOpen(false)
+              setBarcodeMsg(`바코드 인식: ${code}`)
+              fetchProductByBarcode(code)
+            }
+          }
+        )
+        if (cancelled) {
+          controls.stop()
+          return
+        }
+        controlsRef.current = controls
+      } catch (e) {
+        console.error('카메라 시작 실패:', e)
+        setBarcodeMsg('❌ 카메라를 사용할 수 없어요. 브라우저 카메라 권한을 확인해주세요.')
+        setScannerOpen(false)
+      }
+    }
+
+    start()
+
+    return () => {
+      cancelled = true
+      controlsRef.current?.stop()
+    }
+  }, [scannerOpen])
+
   const runOCR = async (file) => {
     return new Promise((resolve) => {
       const reader = new FileReader()
@@ -56,33 +141,6 @@ function App() {
         } catch (error) {
           resolve('')
         }
-      }
-      reader.readAsDataURL(file)
-    })
-  }
-
-  const scanBarcodeWithVision = async (file) => {
-    return new Promise((resolve) => {
-      const reader = new FileReader()
-      reader.onload = async (e) => {
-        const imageData = e.target.result
-        try {
-          const response = await fetch('https://ingredient-scanner-server.onrender.com/barcode', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imageData })
-          })
-          const data = await response.json()
-          if (data.barcode) {
-            setBarcodeMsg(`바코드 인식: ${data.barcode}`)
-            await fetchProductByBarcode(data.barcode)
-          } else {
-            setBarcodeMsg('❌ 바코드를 인식하지 못했어요. 다시 찍어주세요.')
-          }
-        } catch (error) {
-          setBarcodeMsg('❌ 바코드 인식 중 오류가 발생했어요.')
-        }
-        resolve()
       }
       reader.readAsDataURL(file)
     })
@@ -107,15 +165,15 @@ function App() {
           setOcrLoading(false)
           await analyzeIngredients(ingredientText)
         } else {
-          setBarcodeMsg('❌ 이 제품의 성분 정보가 없어요. 직접 입력해주세요.')
+          setBarcodeMsg('❌ 이 제품의 성분 정보가 없어요. 성분표를 카메라로 찍어주세요.')
           setOcrLoading(false)
         }
       } else {
-        setBarcodeMsg('❌ 제품을 찾을 수 없어요. 직접 입력해주세요.')
+        setBarcodeMsg('❌ 제품을 찾을 수 없어요. 성분표를 카메라로 찍어주세요.')
         setOcrLoading(false)
       }
     } catch (err) {
-      setBarcodeMsg('❌ 제품 정보를 가져오지 못했어요. 직접 입력해주세요.')
+      setBarcodeMsg('❌ 제품 정보를 가져오지 못했어요. 성분표를 카메라로 찍어주세요.')
       setOcrLoading(false)
     }
   }
@@ -152,16 +210,17 @@ function App() {
     await analyzeIngredients(text)
   }
 
-  const handleBarcodeCapture = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-
-    setPreview(URL.createObjectURL(file))
-    setBarcodeMsg('바코드 인식 중...')
+  const openBarcodeScanner = () => {
+    setPreview(null)
     setIngredients('')
     setResult('')
+    setBarcodeMsg('바코드를 카메라에 비춰주세요...')
+    setScannerOpen(true)
+  }
 
-    await scanBarcodeWithVision(file)
+  const closeBarcodeScanner = () => {
+    setScannerOpen(false)
+    setBarcodeMsg('')
   }
 
   const analyzeIngredients = async (text) => {
@@ -231,17 +290,39 @@ function App() {
               style={{ display: 'none' }}
             />
           </label>
-          <label className="button-webcam">
+          <button
+            type="button"
+            className="button-webcam"
+            onClick={openBarcodeScanner}
+          >
             📊 바코드 스캔
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleBarcodeCapture}
-              style={{ display: 'none' }}
-            />
-          </label>
+          </button>
         </div>
+
+        {/* 실시간 바코드 스캐너 오버레이 */}
+        {scannerOpen && (
+          <div style={styles.scannerOverlay}>
+            <div style={styles.scannerBox}>
+              <video ref={videoRef} style={styles.scannerVideo} muted playsInline />
+              <div style={styles.scannerGuide}>
+                <div style={styles.scannerFrame}>
+                  <div style={styles.scanLine} />
+                </div>
+                <p style={styles.scannerHint}>
+                  바코드를 사각형 안에 가로로 맞춰주세요.<br />
+                  병은 천천히 돌려보세요.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeBarcodeScanner}
+                style={styles.scannerClose}
+              >
+                ✕ 닫기
+              </button>
+            </div>
+          </div>
+        )}
 
         {preview && (
           <img src={preview} alt="캡처된 이미지" className="preview-img" />
@@ -287,6 +368,77 @@ function App() {
       )}
     </div>
   )
+}
+
+const styles = {
+  scannerOverlay: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.92)',
+    zIndex: 9999,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  scannerBox: {
+    position: 'relative',
+    width: '100%',
+    maxWidth: 480,
+  },
+  scannerVideo: {
+    width: '100%',
+    borderRadius: 12,
+    background: '#000',
+    display: 'block',
+  },
+  scannerGuide: {
+    position: 'absolute',
+    inset: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    pointerEvents: 'none',
+  },
+  scannerFrame: {
+    width: '75%',
+    height: 130,
+    border: '3px solid rgba(255,255,255,0.9)',
+    borderRadius: 8,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  scanLine: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 2,
+    background: 'rgba(255,60,60,0.9)',
+    top: '50%',
+  },
+  scannerHint: {
+    marginTop: 16,
+    color: '#fff',
+    fontSize: 14,
+    textAlign: 'center',
+    textShadow: '0 1px 3px rgba(0,0,0,0.9)',
+    padding: '0 20px',
+    lineHeight: 1.5,
+  },
+  scannerClose: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    background: 'rgba(255,255,255,0.95)',
+    color: '#111',
+    border: 'none',
+    borderRadius: 20,
+    padding: '8px 14px',
+    fontSize: 14,
+    fontWeight: 600,
+    cursor: 'pointer',
+  },
 }
 
 export default App
