@@ -219,4 +219,82 @@ function App() {
         <label className="label">사진 촬영 / 업로드</label>
 
         <div className="upload-buttons">
-          <label
+          <label className="button-webcam">
+            📷 카메라로 찍기
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handlePhotoCapture}
+              style={{ display: 'none' }}
+            />
+          </label>
+          <label className="button-upload">
+            📁 사진 업로드
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              style={{ display: 'none' }}
+            />
+          </label>
+          <label className="button-webcam">
+            📊 바코드 촬영
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleBarcodeCapture}
+              style={{ display: 'none' }}
+            />
+          </label>
+        </div>
+
+        {preview && (
+          <img src={preview} alt="캡처된 이미지" className="preview-img" />
+        )}
+
+        {barcodeMsg !== '' && (
+          <p className="ocr-loading">{barcodeMsg}</p>
+        )}
+
+        {ocrLoading && <p className="ocr-loading">처리 중...</p>}
+      </div>
+
+      <div className="card">
+        <label className="label">성분표 입력</label>
+        <textarea
+          className="textarea"
+          placeholder="예) Water, Sodium Lauryl Sulfate, Sodium Benzoate..."
+          value={ingredients}
+          onChange={(e) => setIngredients(e.target.value)}
+          disabled={loading}
+        />
+        <button
+          className={`button ${loading ? 'button-loading' : ''}`}
+          onClick={analyze}
+          disabled={loading || ocrLoading || isAnalyzed}
+          style={isAnalyzed ? { background: '#4caf50', color: '#fff', cursor: 'not-allowed' } : undefined}
+        >
+          {loading ? (
+            <span className="loading-content">
+              <span className="spinner" />
+              {loadingMsg} ({progress}%)
+            </span>
+          ) : isAnalyzed ? '✅ 성분 분석 완료' : '성분 분석하기'}
+        </button>
+      </div>
+
+      {result && (
+        <div className="card result-card">
+          <label className="label">분석 결과</label>
+          <div className="result-text">
+            <ReactMarkdown>{result}</ReactMarkdown>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default App
