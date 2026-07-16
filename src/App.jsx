@@ -9,9 +9,62 @@ const LOADING_MESSAGES = [
   '결과 정리 중...',
 ]
 
+// SVG 아이콘들
+const IconSearch = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="7" />
+    <path d="M21 21l-4.35-4.35" />
+  </svg>
+)
+
+const IconCamera = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+    <circle cx="12" cy="13" r="4" />
+  </svg>
+)
+
+const IconFolder = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+  </svg>
+)
+
+const IconBarcode = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 5v14M7 5v14M11 5v14M15 5v14M19 5v14" />
+  </svg>
+)
+
+const IconBulb = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.5.5.9 1.1 1 1.8v.5h6v-.5c.1-.7.5-1.3 1-1.8A7 7 0 0 0 12 2z" />
+  </svg>
+)
+
+const IconLeaf = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19.2 2.96c1.4 9.3-.7 15.5-8.2 17.04M2 21c0-3 1.85-5.36 5.08-6" />
+  </svg>
+)
+
+const IconCheck = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+)
+
+const IconClipboard = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+    <rect x="9" y="3" width="6" height="4" rx="1" />
+  </svg>
+)
+
 function App() {
   const [ingredients, setIngredients] = useState('')
   const [result, setResult] = useState('')
+  const [errorMsg, setErrorMsg] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingMsg, setLoadingMsg] = useState('')
   const [progress, setProgress] = useState(0)
@@ -135,6 +188,7 @@ function App() {
     setOcrLoading(true)
     setIngredients('')
     setResult('')
+    setErrorMsg('')
     setAnalyzedText('')
     setBarcodeMsg('')
 
@@ -152,6 +206,7 @@ function App() {
     setOcrLoading(true)
     setIngredients('')
     setResult('')
+    setErrorMsg('')
     setAnalyzedText('')
     setBarcodeMsg('')
 
@@ -169,6 +224,7 @@ function App() {
     setBarcodeMsg('바코드 인식 중...')
     setIngredients('')
     setResult('')
+    setErrorMsg('')
     setAnalyzedText('')
 
     await scanBarcode(file)
@@ -178,6 +234,7 @@ function App() {
     if (!text.trim()) return
     setLoading(true)
     setResult('')
+    setErrorMsg('')
 
     try {
       const response = await fetch('https://ingredient-scanner-server.onrender.com/analyze', {
@@ -189,13 +246,18 @@ function App() {
       const data = await response.json()
       setProgress(100)
       setTimeout(() => {
-        setResult(data.result)
-        setAnalyzedText(text)
+        if (data.error) {
+          // 서버가 오류 반환
+          setErrorMsg(data.error)
+        } else if (data.result) {
+          setResult(data.result)
+          setAnalyzedText(text)
+        }
         setLoading(false)
         setProgress(0)
       }, 300)
     } catch (error) {
-      setResult('서버 연결에 실패했어요. 다시 시도해주세요.')
+      setErrorMsg('서버 연결에 실패했어요. 인터넷 연결을 확인하고 다시 시도해주세요.')
       setLoading(false)
       setProgress(0)
     }
@@ -216,7 +278,9 @@ function App() {
       )}
 
       <div className="header">
-        <div className="header-icon">🔍</div>
+        <div className="header-icon">
+          <IconSearch />
+        </div>
         <div>
           <h1 className="header-title">성분 스캐너</h1>
           <p className="header-subtitle">성분표를 입력하거나 사진을 올려주세요</p>
@@ -228,8 +292,8 @@ function App() {
 
         <div className="upload-buttons">
           <label className="button-webcam">
-            <span style={{ fontSize: 32 }}>📷</span>
-            <span>카메라로 찍기</span>
+            <IconCamera />
+            <span>카메라</span>
             <input
               type="file"
               accept="image/*"
@@ -239,7 +303,7 @@ function App() {
             />
           </label>
           <label className="button-upload">
-            <span style={{ fontSize: 32 }}>📁</span>
+            <IconFolder />
             <span>사진 업로드</span>
             <input
               type="file"
@@ -249,8 +313,8 @@ function App() {
             />
           </label>
           <label className="button-webcam">
-            <span style={{ fontSize: 32 }}>📊</span>
-            <span>바코드 촬영</span>
+            <IconBarcode />
+            <span>바코드</span>
             <input
               type="file"
               accept="image/*"
@@ -261,9 +325,12 @@ function App() {
           </label>
         </div>
 
-        <p style={{ fontSize: 14, marginTop: 8, lineHeight: 1.5 }}>
-          💡 <b>바코드 촬영 팁</b>: 바코드가 화면 가득 차도록, 아래 <b>숫자가 선명하게</b> 보이도록 찍어주세요.
-        </p>
+        <div className="tip-box">
+          <IconBulb />
+          <div>
+            <b>바코드 촬영 팁</b>: 바코드가 화면 가득 차도록, 아래 <b>숫자가 선명하게</b> 보이도록 찍어주세요.
+          </div>
+        </div>
 
         {preview && (
           <img src={preview} alt="캡처된 이미지" className="preview-img" />
@@ -296,13 +363,31 @@ function App() {
               <span className="spinner" />
               {loadingMsg} ({progress}%)
             </span>
-          ) : isAnalyzed ? '✅ 성분 분석 완료' : '🌿 성분 분석하기'}
+          ) : isAnalyzed ? (
+            <><IconCheck /> 성분 분석 완료</>
+          ) : (
+            <><IconLeaf /> 성분 분석하기</>
+          )}
         </button>
       </div>
 
+      {errorMsg && (
+        <div className="card">
+          <div className="error-message">
+            <strong>⚠️ 분석 중 오류가 발생했어요</strong><br />
+            {errorMsg}<br /><br />
+            잠시 후 <b>성분 분석하기</b> 버튼을 다시 눌러주세요.
+          </div>
+        </div>
+      )}
+
       {result && (
         <div className="card result-card">
-          <label className="label">📋 분석 결과</label>
+          <label className="label">
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <IconClipboard /> 분석 결과
+            </span>
+          </label>
           <div className="result-text">
             <ReactMarkdown>{result}</ReactMarkdown>
           </div>

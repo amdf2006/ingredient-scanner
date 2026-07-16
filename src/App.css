@@ -3,44 +3,41 @@
 
 /* ===== 색상 & 디자인 토큰 ===== */
 :root {
-  /* 그린 내추럴 팔레트 */
   --bg-page: #f0f5ef;
   --bg-card: #ffffff;
   --bg-input: #f8faf7;
-  
+
   --green-primary: #5a8a5c;
   --green-dark: #4a7a4c;
   --green-light: #a8c9a3;
   --green-lightest: #e8f0e3;
   --green-sage: #d5e3d1;
-  
+
   --danger: #d85757;
   --danger-bg: #fce8e8;
   --warning: #e89547;
   --warning-bg: #fdf1e3;
   --safe: #5a8a5c;
   --safe-bg: #e8f0e3;
-  
+
   --text-dark: #2c3e2d;
   --text-body: #3d4c3f;
   --text-muted: #7a8a7c;
   --text-light: #a0aca2;
-  
+
   --border-soft: #e0e8dc;
   --border-input: #d5dfd0;
-  
+
   --radius-lg: 20px;
   --radius-md: 14px;
   --radius-sm: 10px;
-  
+
   --shadow-card: 0 2px 12px rgba(90, 138, 92, 0.06);
   --shadow-hover: 0 4px 16px rgba(90, 138, 92, 0.12);
 }
 
-/* ===== 전역 리셋 & 배경 ===== */
-* {
-  box-sizing: border-box;
-}
+/* ===== 전역 리셋 ===== */
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
@@ -77,8 +74,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
   flex-shrink: 0;
+  color: var(--green-primary);
+}
+
+.header-icon svg {
+  width: 30px;
+  height: 30px;
 }
 
 .header-title {
@@ -116,7 +118,7 @@ body {
   letter-spacing: -0.01em;
 }
 
-/* ===== 업로드 버튼 영역 ===== */
+/* ===== 업로드 버튼 3개 그리드 ===== */
 .upload-buttons {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -130,20 +132,28 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   background: var(--green-lightest);
   color: var(--green-dark);
   border: 1.5px solid var(--green-sage);
   border-radius: var(--radius-md);
-  padding: 18px 8px;
-  font-size: 14px;
+  padding: 16px 4px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: center;
   line-height: 1.3;
-  min-height: 96px;
+  min-height: 100px;
   font-family: inherit;
+  white-space: nowrap;
+}
+
+.button-webcam svg,
+.button-upload svg {
+  width: 28px;
+  height: 28px;
+  color: var(--green-primary);
 }
 
 .button-webcam:hover,
@@ -156,38 +166,31 @@ body {
   box-shadow: var(--shadow-hover);
 }
 
-/* 버튼 안 이모지를 크게 보이도록 */
-.button-webcam,
-.button-upload {
-  font-size: 0;
-}
-
-.button-webcam::first-letter,
-.button-upload::first-letter {
-  font-size: 32px;
-}
-
-/* 텍스트 부분만 다시 크게 (이모지 다음 텍스트) */
-.button-webcam,
-.button-upload {
+/* ===== 팁 박스 ===== */
+.tip-box {
   font-size: 14px;
-}
-
-/* ===== 팁 텍스트 ===== */
-.card > p[style] {
-  font-family: inherit !important;
-  font-size: 14px !important;
-  color: var(--text-muted) !important;
+  color: var(--text-muted);
   background: var(--bg-input);
   padding: 12px 14px;
   border-radius: var(--radius-sm);
-  margin: 12px 0 !important;
-  line-height: 1.6 !important;
+  margin: 12px 0 0 0;
+  line-height: 1.6;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
 }
 
-.card > p[style] b {
+.tip-box b {
   color: var(--text-dark);
   font-weight: 700;
+}
+
+.tip-box svg {
+  width: 18px;
+  height: 18px;
+  color: var(--warning);
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 
 /* ===== 미리보기 이미지 ===== */
@@ -247,7 +250,7 @@ body {
   cursor: not-allowed;
 }
 
-/* ===== 메인 버튼 (성분 분석하기) ===== */
+/* ===== 메인 버튼 ===== */
 .button {
   width: 100%;
   padding: 16px;
@@ -266,6 +269,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
+}
+
+.button svg {
+  width: 20px;
+  height: 20px;
 }
 
 .button:hover:not(:disabled) {
@@ -322,21 +331,15 @@ body {
   transition: width 0.3s ease;
 }
 
-/* ===== 분석 결과 카드 ===== */
+/* ===== 결과 카드 ===== */
 .result-card {
   background: var(--bg-card);
   animation: fadeInUp 0.5s ease;
 }
 
 @keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(15px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .result-text {
@@ -375,9 +378,7 @@ body {
   margin-top: 0;
 }
 
-.result-text p {
-  margin: 10px 0;
-}
+.result-text p { margin: 10px 0; }
 
 .result-text ul,
 .result-text ol {
@@ -385,9 +386,7 @@ body {
   margin: 10px 0;
 }
 
-.result-text li {
-  margin: 6px 0;
-}
+.result-text li { margin: 6px 0; }
 
 .result-text strong {
   color: var(--text-dark);
@@ -402,7 +401,7 @@ body {
   color: var(--green-dark);
 }
 
-/* 결과 안 표 스타일 (위험/주의/안전) */
+/* 결과 표 */
 .result-text table {
   width: 100%;
   border-collapse: separate;
@@ -414,9 +413,7 @@ body {
   border: 1px solid var(--border-soft);
 }
 
-.result-text thead {
-  background: var(--green-lightest);
-}
+.result-text thead { background: var(--green-lightest); }
 
 .result-text th {
   padding: 12px 10px;
@@ -434,38 +431,35 @@ body {
   line-height: 1.6;
 }
 
-.result-text tr:last-child td {
-  border-bottom: none;
-}
+.result-text tr:last-child td { border-bottom: none; }
+.result-text tr:hover { background: var(--bg-input); }
 
-.result-text tr:hover {
-  background: var(--bg-input);
-}
+.result-text td:nth-child(2) { font-weight: 600; }
 
-/* 표 안에 "위험"/"주의"/"안전" 단어가 있으면 색상 강조 (수동으로 안 되지만 시각적 기본 스타일) */
-.result-text td:nth-child(2) {
-  font-weight: 600;
+/* ===== 오류 메시지 ===== */
+.error-message {
+  background: var(--danger-bg);
+  color: var(--danger);
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--danger);
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 /* ===== 반응형 ===== */
 @media (max-width: 380px) {
-  .header-title {
-    font-size: 22px;
-  }
-  .upload-buttons {
-    gap: 8px;
-  }
+  .header-title { font-size: 22px; }
+  .upload-buttons { gap: 8px; }
   .button-webcam,
   .button-upload {
-    padding: 14px 6px;
-    font-size: 13px;
-    min-height: 88px;
+    padding: 14px 4px;
+    font-size: 12px;
+    min-height: 92px;
   }
 }
 
-/* ===== 다크모드 대응 (선택적 - body 배경만 유지) ===== */
 @media (prefers-color-scheme: dark) {
-  /* 강제로 라이트 스타일 유지 */
   body {
     background: var(--bg-page);
     color: var(--text-body);

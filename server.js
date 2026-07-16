@@ -11,37 +11,74 @@ const app = express()
 app.use(cors())
 app.use(express.json({ limit: '10mb' }))
 
+// 잠깐 대기 함수
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+
+// Anthropic API 호출 (자동 재시도 포함)
+async function callAnthropicAPI(ingredients, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-5',
+          max_tokens: 1000,
+          messages: [{
+            role: 'user',
+            content: `다음 성분표를 분석해서 건강에 해로운 성분이 있으면 알려줘. 성분명, 위험도(위험/주의/안전), 이유를 표 형식으로 설명해줘.\n\n${ingredients}`
+          }]
+        })
+      })
+
+      const data = await response.json()
+
+      // 정상 응답
+      if (data.content && data.content[0]) {
+        return { success: true, result: data.content[0].text }
+      }
+
+      // 과부하 등 재시도 가능한 오류
+      if (data.error && (data.error.type === 'overloaded_error' || data.error.type === 'rate_limit_error')) {
+        console.log(`시도 ${attempt}/${maxRetries}: ${data.error.type}, 재시도 중...`)
+        if (attempt < maxRetries) {
+          await sleep(2000 * attempt) // 2초, 4초, 6초 대기
+          continue
+        }
+        return { success: false, error: '지금 AI 서버가 많이 붐비고 있어요. 30초 정도 후 다시 시도해주세요.' }
+      }
+
+      // 기타 오류
+      return { success: false, error: '분석 중 오류가 발생했어요: ' + (data.error?.message || JSON.stringify(data)) }
+    } catch (error) {
+      console.error(`시도 ${attempt} 오류:`, error.message)
+      if (attempt < maxRetries) {
+        await sleep(2000 * attempt)
+        continue
+      }
+      return { success: false, error: '서버 연결에 실패했어요: ' + error.message }
+    }
+  }
+  return { success: false, error: '알 수 없는 오류가 발생했어요.' }
+}
+
 app.post('/analyze', async (req, res) => {
   try {
     const { ingredients } = req.body
+    const result = await callAnthropicAPI(ingredients)
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 1000,
-        messages: [{
-          role: 'user',
-          content: `다음 성분표를 분석해서 건강에 해로운 성분이 있으면 알려줘. 성분명, 위험도(위험/주의/안전), 이유를 설명해줘.\n\n${ingredients}`
-        }]
-      })
-    })
-
-    const data = await response.json()
-
-    if (data.content && data.content[0]) {
-      res.json({ result: data.content[0].text })
+    if (result.success) {
+      res.json({ result: result.result })
     } else {
-      res.json({ result: '오류: ' + JSON.stringify(data) })
+      res.json({ error: result.error })
     }
   } catch (error) {
-    console.error('오류:', error)
-    res.status(500).json({ result: '서버 오류가 발생했어요: ' + error.message })
+    console.error('/analyze 오류:', error)
+    res.status(500).json({ error: '서버 오류가 발생했어요: ' + error.message })
   }
 })
 
@@ -78,20 +115,17 @@ app.post('/ocr', async (req, res) => {
   }
 })
 
-// ZXing으로 바코드 디코딩 시도
 async function tryZxing(base64Data) {
   try {
     const buffer = Buffer.from(base64Data, 'base64')
     const image = await Jimp.read(buffer)
 
-    // 회전을 여러 각도로 시도 (병 곡면 대응)
     const angles = [0, 90, 180, 270]
 
     for (const angle of angles) {
       const rotated = angle === 0 ? image.clone() : image.clone().rotate(angle)
       const { width, height, data } = rotated.bitmap
 
-      // RGBA → 밝기값 배열로 변환
       const luminances = new Uint8ClampedArray(width * height)
       for (let i = 0, j = 0; i < data.length; i += 4, j++) {
         luminances[j] = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) | 0
@@ -116,7 +150,7 @@ async function tryZxing(base64Data) {
         const result = reader.decode(bitmap)
         if (result) return result.getText()
       } catch (e) {
-        // 이 각도에선 못 찾음, 다음 각도 시도
+        // 이 각도에선 못 찾음
       }
     }
     return null
@@ -126,7 +160,6 @@ async function tryZxing(base64Data) {
   }
 }
 
-// Google Vision OCR로 바코드 아래 숫자 추출 시도
 async function tryOcrBarcode(base64Data) {
   try {
     const response = await fetch(
@@ -146,8 +179,6 @@ async function tryOcrBarcode(base64Data) {
     if (!data.responses?.[0]?.fullTextAnnotation) return null
     const text = data.responses[0].fullTextAnnotation.text
 
-    // 12~13자리 연속 숫자 찾기 (UPC-A 12자리, EAN-13 13자리)
-    // 공백/점/하이픈으로 분리된 경우도 지원
     const cleaned = text.replace(/[\s.\-]/g, '')
     const match13 = cleaned.match(/\d{13}/)
     if (match13) return match13[0]
@@ -167,14 +198,12 @@ app.post('/barcode', async (req, res) => {
     const { imageData } = req.body
     const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '')
 
-    // 1. ZXing 우선 시도 (진짜 바코드 디코딩)
     let barcode = await tryZxing(base64Data)
     if (barcode) {
       console.log('ZXing 성공:', barcode)
       return res.json({ barcode, method: 'zxing' })
     }
 
-    // 2. 실패 시 OCR로 숫자 추출
     barcode = await tryOcrBarcode(base64Data)
     if (barcode) {
       console.log('OCR 성공:', barcode)
