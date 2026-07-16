@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import './App.css'
-import ReactMarkdown from 'react-markdown'
 
 const LOADING_MESSAGES = [
   '성분표를 읽는 중...',
@@ -61,9 +60,30 @@ const IconClipboard = () => (
   </svg>
 )
 
+// JSON 파싱 함수 (마크다운 코드블록 등 안전하게 처리)
+function parseAnalysisResult(text) {
+  if (!text) return null
+  try {
+    // ```json ... ``` 로 감싼 경우 제거
+    let cleaned = text.trim()
+    cleaned = cleaned.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/, '')
+
+    // JSON 부분만 추출
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) return null
+    const parsed = JSON.parse(jsonMatch[0])
+    if (!parsed.items || !Array.isArray(parsed.items)) return null
+    return parsed
+  } catch (e) {
+    console.error('JSON 파싱 오류:', e)
+    return null
+  }
+}
+
 function App() {
   const [ingredients, setIngredients] = useState('')
-  const [result, setResult] = useState('')
+  const [result, setResult] = useState(null) // 이제 파싱된 객체 저장
+  const [rawResult, setRawResult] = useState('') // 원본 텍스트 (파싱 실패 시 대비)
   const [errorMsg, setErrorMsg] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingMsg, setLoadingMsg] = useState('')
@@ -180,17 +200,22 @@ function App() {
     setOcrLoading(false)
   }
 
+  const resetResults = () => {
+    setIngredients('')
+    setResult(null)
+    setRawResult('')
+    setErrorMsg('')
+    setAnalyzedText('')
+    setBarcodeMsg('')
+  }
+
   const handlePhotoCapture = async (e) => {
     const file = e.target.files[0]
     if (!file) return
 
     setPreview(URL.createObjectURL(file))
     setOcrLoading(true)
-    setIngredients('')
-    setResult('')
-    setErrorMsg('')
-    setAnalyzedText('')
-    setBarcodeMsg('')
+    resetResults()
 
     const text = await runOCR(file)
     setIngredients(text)
@@ -204,11 +229,7 @@ function App() {
 
     setPreview(URL.createObjectURL(file))
     setOcrLoading(true)
-    setIngredients('')
-    setResult('')
-    setErrorMsg('')
-    setAnalyzedText('')
-    setBarcodeMsg('')
+    resetResults()
 
     const text = await runOCR(file)
     setIngredients(text)
@@ -222,10 +243,7 @@ function App() {
 
     setPreview(URL.createObjectURL(file))
     setBarcodeMsg('바코드 인식 중...')
-    setIngredients('')
-    setResult('')
-    setErrorMsg('')
-    setAnalyzedText('')
+    resetResults()
 
     await scanBarcode(file)
   }
@@ -233,7 +251,8 @@ function App() {
   const analyzeIngredients = async (text) => {
     if (!text.trim()) return
     setLoading(true)
-    setResult('')
+    setResult(null)
+    setRawResult('')
     setErrorMsg('')
 
     try {
@@ -247,11 +266,17 @@ function App() {
       setProgress(100)
       setTimeout(() => {
         if (data.error) {
-          // 서버가 오류 반환
           setErrorMsg(data.error)
         } else if (data.result) {
-          setResult(data.result)
-          setAnalyzedText(text)
+          const parsed = parseAnalysisResult(data.result)
+          if (parsed) {
+            setResult(parsed)
+            setAnalyzedText(text)
+          } else {
+            // JSON 파싱 실패 시 원본 텍스트 표시
+            setRawResult(data.result)
+            setAnalyzedText(text)
+          }
         }
         setLoading(false)
         setProgress(0)
@@ -267,7 +292,15 @@ function App() {
     await analyzeIngredients(ingredients)
   }
 
-  const isAnalyzed = result && ingredients.trim() === analyzedText.trim()
+  const isAnalyzed = (result || rawResult) && ingredients.trim() === analyzedText.trim()
+
+  // 카운트 계산
+  const counts = result ? {
+    danger: result.items.filter(i => i.level === '위험').length,
+    warning: result.items.filter(i => i.level === '주의').length,
+    safe: result.items.filter(i => i.level === '안전').length,
+    total: result.items.length,
+  } : null
 
   return (
     <div className="container">
@@ -294,34 +327,17 @@ function App() {
           <label className="button-webcam">
             <IconCamera />
             <span>카메라</span>
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handlePhotoCapture}
-              style={{ display: 'none' }}
-            />
+            <input type="file" accept="image/*" capture="environment" onChange={handlePhotoCapture} style={{ display: 'none' }} />
           </label>
           <label className="button-upload">
             <IconFolder />
             <span>사진 업로드</span>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleImageUpload}
-              style={{ display: 'none' }}
-            />
+            <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
           </label>
           <label className="button-webcam">
             <IconBarcode />
             <span>바코드</span>
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleBarcodeCapture}
-              style={{ display: 'none' }}
-            />
+            <input type="file" accept="image/*" capture="environment" onChange={handleBarcodeCapture} style={{ display: 'none' }} />
           </label>
         </div>
 
@@ -332,14 +348,8 @@ function App() {
           </div>
         </div>
 
-        {preview && (
-          <img src={preview} alt="캡처된 이미지" className="preview-img" />
-        )}
-
-        {barcodeMsg !== '' && (
-          <p className="ocr-loading">{barcodeMsg}</p>
-        )}
-
+        {preview && <img src={preview} alt="캡처된 이미지" className="preview-img" />}
+        {barcodeMsg !== '' && <p className="ocr-loading">{barcodeMsg}</p>}
         {ocrLoading && <p className="ocr-loading">처리 중...</p>}
       </div>
 
@@ -381,15 +391,73 @@ function App() {
         </div>
       )}
 
-      {result && (
+      {/* JSON 파싱 성공 시: 예쁜 카드/표 */}
+      {result && counts && (
         <div className="card result-card">
-          <label className="label">
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              <IconClipboard /> 분석 결과
-            </span>
-          </label>
+          <div className="result-header">
+            <span className="result-header-icon"><IconClipboard /></span>
+            <h2 className="result-title">분석 결과</h2>
+          </div>
+          <p className="result-subtitle">총 {counts.total}개 성분 분석 완료</p>
+
+          <div className="count-cards">
+            <div className="count-card count-danger">
+              <div className="count-card-label">위험 성분</div>
+              <div className="count-card-number">{counts.danger}개</div>
+            </div>
+            <div className="count-card count-warning">
+              <div className="count-card-label">주의 성분</div>
+              <div className="count-card-number">{counts.warning}개</div>
+            </div>
+            <div className="count-card count-safe">
+              <div className="count-card-label">안전 성분</div>
+              <div className="count-card-number">{counts.safe}개</div>
+            </div>
+          </div>
+
+          <div className="result-table-wrap">
+            <table className="result-table">
+              <thead>
+                <tr>
+                  <th>성분명</th>
+                  <th>위험도</th>
+                  <th>설명</th>
+                </tr>
+              </thead>
+              <tbody>
+                {result.items.map((item, idx) => (
+                  <tr key={idx}>
+                    <td>{item.name}</td>
+                    <td>
+                      <span className={`level-badge level-${
+                        item.level === '위험' ? 'danger' :
+                        item.level === '주의' ? 'warning' : 'safe'
+                      }`}>
+                        {item.level}
+                      </span>
+                    </td>
+                    <td>{item.description}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p className="result-disclaimer">
+            * 본 결과는 참고용이며, 개인차가 있을 수 있습니다.
+          </p>
+        </div>
+      )}
+
+      {/* JSON 파싱 실패 시: 원본 텍스트라도 보여주기 */}
+      {!result && rawResult && (
+        <div className="card result-card">
+          <div className="result-header">
+            <span className="result-header-icon"><IconClipboard /></span>
+            <h2 className="result-title">분석 결과</h2>
+          </div>
           <div className="result-text">
-            <ReactMarkdown>{result}</ReactMarkdown>
+            <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>{rawResult}</pre>
           </div>
         </div>
       )}

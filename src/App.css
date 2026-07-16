@@ -1,467 +1,189 @@
-/* ===== 폰트 로드 ===== */
-@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css');
-
-/* ===== 색상 & 디자인 토큰 ===== */
-:root {
-  --bg-page: #f0f5ef;
-  --bg-card: #ffffff;
-  --bg-input: #f8faf7;
-
-  --green-primary: #5a8a5c;
-  --green-dark: #4a7a4c;
-  --green-light: #a8c9a3;
-  --green-lightest: #e8f0e3;
-  --green-sage: #d5e3d1;
-
-  --danger: #d85757;
-  --danger-bg: #fce8e8;
-  --warning: #e89547;
-  --warning-bg: #fdf1e3;
-  --safe: #5a8a5c;
-  --safe-bg: #e8f0e3;
-
-  --text-dark: #2c3e2d;
-  --text-body: #3d4c3f;
-  --text-muted: #7a8a7c;
-  --text-light: #a0aca2;
-
-  --border-soft: #e0e8dc;
-  --border-input: #d5dfd0;
-
-  --radius-lg: 20px;
-  --radius-md: 14px;
-  --radius-sm: 10px;
-
-  --shadow-card: 0 2px 12px rgba(90, 138, 92, 0.06);
-  --shadow-hover: 0 4px 16px rgba(90, 138, 92, 0.12);
-}
-
-/* ===== 전역 리셋 ===== */
-* { box-sizing: border-box; }
-
-body {
-  margin: 0;
-  padding: 0;
-  font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  background: var(--bg-page);
-  color: var(--text-body);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* ===== 컨테이너 ===== */
-.container {
-  max-width: 500px;
-  margin: 0 auto;
-  padding: 20px 16px 40px;
-  min-height: 100vh;
-}
-
-/* ===== 헤더 ===== */
-.header {
+/* ===== 결과 카드 상단 헤더 ===== */
+.result-header {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 24px;
-  padding: 8px 4px;
+  gap: 10px;
+  margin-bottom: 4px;
 }
 
-.header-icon {
-  width: 56px;
-  height: 56px;
-  background: var(--green-lightest);
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+.result-header-icon {
+  display: inline-flex;
   color: var(--green-primary);
+  width: 22px;
+  height: 22px;
 }
 
-.header-icon svg {
-  width: 30px;
-  height: 30px;
+.result-header-icon svg {
+  width: 100%;
+  height: 100%;
 }
 
-.header-title {
-  font-size: 26px;
+.result-title {
+  font-size: 20px;
   font-weight: 700;
   color: var(--text-dark);
-  margin: 0 0 2px 0;
+  margin: 0;
   letter-spacing: -0.02em;
 }
 
-.header-subtitle {
-  font-size: 14px;
+.result-subtitle {
+  font-size: 15px;
   color: var(--text-muted);
-  margin: 0;
-  font-weight: 400;
+  margin: 0 0 18px 0;
 }
 
-/* ===== 카드 ===== */
-.card {
-  background: var(--bg-card);
-  border-radius: var(--radius-lg);
-  padding: 22px 20px;
-  margin-bottom: 16px;
-  box-shadow: var(--shadow-card);
-  border: 1px solid var(--border-soft);
-}
-
-/* ===== 라벨 ===== */
-.label {
-  display: block;
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--text-dark);
-  margin-bottom: 14px;
-  letter-spacing: -0.01em;
-}
-
-/* ===== 업로드 버튼 3개 그리드 ===== */
-.upload-buttons {
+/* ===== 카운트 카드 3개 (위험/주의/안전) ===== */
+.count-cards {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
-  margin-bottom: 14px;
+  margin-bottom: 20px;
 }
 
-.button-webcam,
-.button-upload {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  background: var(--green-lightest);
-  color: var(--green-dark);
-  border: 1.5px solid var(--green-sage);
+.count-card {
+  padding: 16px 10px;
   border-radius: var(--radius-md);
-  padding: 16px 4px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
   text-align: center;
-  line-height: 1.3;
-  min-height: 100px;
-  font-family: inherit;
-  white-space: nowrap;
+  border: 1.5px solid;
 }
 
-.button-webcam svg,
-.button-upload svg {
-  width: 28px;
-  height: 28px;
-  color: var(--green-primary);
-}
-
-.button-webcam:hover,
-.button-upload:hover,
-.button-webcam:active,
-.button-upload:active {
-  background: var(--green-sage);
-  border-color: var(--green-primary);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-hover);
-}
-
-/* ===== 팁 박스 ===== */
-.tip-box {
+.count-card-label {
   font-size: 14px;
-  color: var(--text-muted);
-  background: var(--bg-input);
-  padding: 12px 14px;
-  border-radius: var(--radius-sm);
-  margin: 12px 0 0 0;
-  line-height: 1.6;
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
+  font-weight: 600;
+  margin-bottom: 6px;
 }
 
-.tip-box b {
-  color: var(--text-dark);
-  font-weight: 700;
-}
-
-.tip-box svg {
-  width: 18px;
-  height: 18px;
-  color: var(--warning);
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-/* ===== 미리보기 이미지 ===== */
-.preview-img {
-  width: 100%;
-  max-height: 300px;
-  object-fit: contain;
-  border-radius: var(--radius-md);
-  margin-top: 14px;
-  background: var(--bg-input);
-  border: 1px solid var(--border-soft);
-}
-
-/* ===== 상태 메시지 ===== */
-.ocr-loading {
-  margin: 12px 0 0 0;
-  padding: 12px 14px;
-  background: var(--green-lightest);
-  color: var(--green-dark);
-  border-radius: var(--radius-sm);
-  font-size: 15px;
-  font-weight: 500;
-  line-height: 1.5;
-  border-left: 3px solid var(--green-primary);
-}
-
-/* ===== 텍스트 입력 ===== */
-.textarea {
-  width: 100%;
-  min-height: 130px;
-  padding: 16px;
-  border: 1.5px solid var(--border-input);
-  border-radius: var(--radius-md);
-  background: var(--bg-input);
-  font-size: 16px;
-  font-family: inherit;
-  color: var(--text-body);
-  resize: vertical;
-  line-height: 1.6;
-  transition: border-color 0.2s ease;
-  box-sizing: border-box;
-}
-
-.textarea:focus {
-  outline: none;
-  border-color: var(--green-primary);
-  background: #fff;
-}
-
-.textarea::placeholder {
-  color: var(--text-light);
-}
-
-.textarea:disabled {
-  background: var(--bg-input);
-  color: var(--text-muted);
-  cursor: not-allowed;
-}
-
-/* ===== 메인 버튼 ===== */
-.button {
-  width: 100%;
-  padding: 16px;
-  background: var(--green-primary);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius-md);
-  font-size: 17px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  margin-top: 14px;
-  font-family: inherit;
-  letter-spacing: -0.01em;
-  min-height: 54px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.button svg {
-  width: 20px;
-  height: 20px;
-}
-
-.button:hover:not(:disabled) {
-  background: var(--green-dark);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(90, 138, 92, 0.3);
-}
-
-.button:disabled {
-  cursor: not-allowed;
-  opacity: 0.85;
-}
-
-.button-loading {
-  background: var(--green-dark);
-}
-
-/* ===== 로딩 스피너 ===== */
-.loading-content {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  justify-content: center;
-}
-
-.spinner {
-  width: 18px;
-  height: 18px;
-  border: 2.5px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  display: inline-block;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* ===== 진행률 바 ===== */
-.progress-bar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.5);
-  z-index: 1000;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--green-primary), var(--green-light));
-  transition: width 0.3s ease;
-}
-
-/* ===== 결과 카드 ===== */
-.result-card {
-  background: var(--bg-card);
-  animation: fadeInUp 0.5s ease;
-}
-
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(15px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.result-text {
-  font-size: 15px;
-  line-height: 1.75;
-  color: var(--text-body);
-}
-
-.result-text h1 {
+.count-card-number {
   font-size: 22px;
-  color: var(--text-dark);
-  margin: 20px 0 12px;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: -0.02em;
 }
 
-.result-text h2 {
-  font-size: 19px;
-  color: var(--text-dark);
-  margin: 20px 0 10px;
-  font-weight: 700;
-  padding-bottom: 8px;
-  border-bottom: 2px solid var(--green-lightest);
+.count-danger {
+  background: var(--danger-bg);
+  border-color: #f5c5c5;
+  color: var(--danger);
 }
 
-.result-text h3 {
-  font-size: 17px;
-  color: var(--green-dark);
-  margin: 16px 0 8px;
-  font-weight: 700;
+.count-warning {
+  background: var(--warning-bg);
+  border-color: #f5d5b0;
+  color: var(--warning);
 }
 
-.result-text h1:first-child,
-.result-text h2:first-child,
-.result-text h3:first-child {
-  margin-top: 0;
+.count-safe {
+  background: var(--safe-bg);
+  border-color: var(--green-sage);
+  color: var(--safe);
 }
 
-.result-text p { margin: 10px 0; }
-
-.result-text ul,
-.result-text ol {
-  padding-left: 22px;
-  margin: 10px 0;
-}
-
-.result-text li { margin: 6px 0; }
-
-.result-text strong {
-  color: var(--text-dark);
-  font-weight: 700;
-}
-
-.result-text code {
-  background: var(--green-lightest);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 14px;
-  color: var(--green-dark);
-}
-
-/* 결과 표 */
-.result-text table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  margin: 16px 0;
-  font-size: 14px;
+/* ===== 결과 표 ===== */
+.result-table-wrap {
+  overflow-x: auto;
   border-radius: var(--radius-md);
-  overflow: hidden;
   border: 1px solid var(--border-soft);
 }
 
-.result-text thead { background: var(--green-lightest); }
+.result-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 15px;
+  background: #fff;
+}
 
-.result-text th {
-  padding: 12px 10px;
+.result-table thead {
+  background: var(--bg-input);
+}
+
+.result-table th {
+  padding: 12px 12px;
   text-align: left;
   font-weight: 700;
   color: var(--text-dark);
   font-size: 14px;
+  border-bottom: 1.5px solid var(--border-soft);
+  white-space: nowrap;
+}
+
+.result-table td {
+  padding: 14px 12px;
   border-bottom: 1px solid var(--border-soft);
-}
-
-.result-text td {
-  padding: 12px 10px;
-  border-bottom: 1px solid var(--border-soft);
-  vertical-align: top;
+  vertical-align: middle;
   line-height: 1.6;
+  color: var(--text-body);
+  font-size: 15px;
 }
 
-.result-text tr:last-child td { border-bottom: none; }
-.result-text tr:hover { background: var(--bg-input); }
-
-.result-text td:nth-child(2) { font-weight: 600; }
-
-/* ===== 오류 메시지 ===== */
-.error-message {
-  background: var(--danger-bg);
-  color: var(--danger);
-  padding: 14px 16px;
-  border-radius: var(--radius-md);
-  border-left: 3px solid var(--danger);
-  font-size: 14px;
-  line-height: 1.6;
+.result-table td:first-child {
+  font-weight: 600;
+  color: var(--text-dark);
 }
 
-/* ===== 반응형 ===== */
-@media (max-width: 380px) {
-  .header-title { font-size: 22px; }
-  .upload-buttons { gap: 8px; }
-  .button-webcam,
-  .button-upload {
-    padding: 14px 4px;
-    font-size: 12px;
-    min-height: 92px;
+.result-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* ===== 위험도 뱃지 ===== */
+.level-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  min-width: 44px;
+  letter-spacing: -0.01em;
+}
+
+.level-danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.level-warning {
+  background: var(--warning);
+  color: #fff;
+}
+
+.level-safe {
+  background: var(--safe);
+  color: #fff;
+}
+
+/* ===== 결과 하단 안내 ===== */
+.result-disclaimer {
+  margin: 16px 0 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-style: italic;
+  line-height: 1.5;
+}
+
+/* ===== 모바일 표 반응형 ===== */
+@media (max-width: 480px) {
+  .result-table th,
+  .result-table td {
+    padding: 10px 8px;
+    font-size: 14px;
+  }
+
+  .result-table td:last-child {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .count-card-label {
+    font-size: 13px;
+  }
+
+  .count-card-number {
+    font-size: 20px;
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
-    background: var(--bg-page);
-    color: var(--text-body);
-  }
+/* ===== 결과 텍스트 폰트 사이즈 상향 ===== */
+.result-text {
+  font-size: 16px;
+  line-height: 1.8;
 }
