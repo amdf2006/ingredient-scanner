@@ -11,35 +11,35 @@ const app = express()
 app.use(cors())
 app.use(express.json({ limit: '10mb' }))
 
-// 잠깐 대기 함수
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
-// Anthropic API 호출 (자동 재시도 포함)
 async function callAnthropicAPI(ingredients, maxRetries = 3) {
-  const prompt = `다음 성분표를 분석해줘. 각 성분마다 위험도(위험/주의/안전)와 짧은 설명을 붙여줘.
-
-반드시 아래 JSON 형식으로만 답변하고, JSON 앞뒤에 다른 설명은 절대 넣지 마.
-
-{
-  "items": [
-    {
-      "name": "성분명 (영문/원문)",
-      "level": "위험" 또는 "주의" 또는 "안전",
-      "description": "왜 그런지 짧게 한 문장"
-    }
-  ]
-}
-
-규칙:
-- "level"은 반드시 "위험", "주의", "안전" 셋 중 하나만 사용
-- 위험: 알레르기 유발, 발암성 의심, 내분비 교란 등 명확한 우려
-- 주의: 특정 조건(고농도, 민감 피부 등)에서 문제 가능
-- 안전: 일반적으로 안전한 성분
-- description은 30자 이내로 간결하게
-- 물, 향료 같은 흔한 성분도 반드시 포함
-
-성분표:
-${ingredients}`
+  const prompt = [
+    '다음 성분표를 분석해줘. 각 성분마다 위험도(위험/주의/안전)와 짧은 설명을 붙여줘.',
+    '',
+    '반드시 아래 JSON 형식으로만 답변하고, JSON 앞뒤에 다른 설명은 절대 넣지 마.',
+    '',
+    '{',
+    '  "items": [',
+    '    {',
+    '      "name": "성분명 (영문/원문)",',
+    '      "level": "위험" 또는 "주의" 또는 "안전",',
+    '      "description": "왜 그런지 짧게 한 문장"',
+    '    }',
+    '  ]',
+    '}',
+    '',
+    '규칙:',
+    '- "level"은 반드시 "위험", "주의", "안전" 셋 중 하나만 사용',
+    '- 위험: 알레르기 유발, 발암성 의심, 내분비 교란 등 명확한 우려',
+    '- 주의: 특정 조건(고농도, 민감 피부 등)에서 문제 가능',
+    '- 안전: 일반적으로 안전한 성분',
+    '- description은 30자 이내로 간결하게',
+    '- 물, 향료 같은 흔한 성분도 반드시 포함',
+    '',
+    '성분표:',
+    ingredients
+  ].join('\n')
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -53,34 +53,28 @@ ${ingredients}`
         body: JSON.stringify({
           model: 'claude-sonnet-4-5',
           max_tokens: 2000,
-          messages: [{
-            role: 'user',
-            content: prompt
-          }]
+          messages: [{ role: 'user', content: prompt }]
         })
       })
 
       const data = await response.json()
 
-      // 정상 응답
       if (data.content && data.content[0]) {
         return { success: true, result: data.content[0].text }
       }
 
-      // 과부하 등 재시도 가능한 오류
       if (data.error && (data.error.type === 'overloaded_error' || data.error.type === 'rate_limit_error')) {
-        console.log(`시도 ${attempt}/${maxRetries}: ${data.error.type}, 재시도 중...`)
+        console.log('Attempt ' + attempt + '/' + maxRetries + ': ' + data.error.type + ', retrying...')
         if (attempt < maxRetries) {
-          await sleep(2000 * attempt) // 2초, 4초, 6초 대기
+          await sleep(2000 * attempt)
           continue
         }
         return { success: false, error: '지금 AI 서버가 많이 붐비고 있어요. 30초 정도 후 다시 시도해주세요.' }
       }
 
-      // 기타 오류
       return { success: false, error: '분석 중 오류가 발생했어요: ' + (data.error?.message || JSON.stringify(data)) }
     } catch (error) {
-      console.error(`시도 ${attempt} 오류:`, error.message)
+      console.error('Attempt ' + attempt + ' error:', error.message)
       if (attempt < maxRetries) {
         await sleep(2000 * attempt)
         continue
@@ -102,7 +96,7 @@ app.post('/analyze', async (req, res) => {
       res.json({ error: result.error })
     }
   } catch (error) {
-    console.error('/analyze 오류:', error)
+    console.error('/analyze error:', error)
     res.status(500).json({ error: '서버 오류가 발생했어요: ' + error.message })
   }
 })
@@ -113,7 +107,7 @@ app.post('/ocr', async (req, res) => {
     const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '')
 
     const response = await fetch(
-      `https://vision.googleapis.com/v1/images:annotate?key=${process.env.GOOGLE_VISION_API_KEY}`,
+      'https://vision.googleapis.com/v1/images:annotate?key=' + process.env.GOOGLE_VISION_API_KEY,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -135,7 +129,7 @@ app.post('/ocr', async (req, res) => {
       res.json({ text: '' })
     }
   } catch (error) {
-    console.error('OCR 오류:', error)
+    console.error('OCR error:', error)
     res.status(500).json({ text: '', error: error.message })
   }
 })
@@ -180,7 +174,7 @@ async function tryZxing(base64Data) {
     }
     return null
   } catch (e) {
-    console.error('ZXing 오류:', e.message)
+    console.error('ZXing error:', e.message)
     return null
   }
 }
@@ -188,7 +182,7 @@ async function tryZxing(base64Data) {
 async function tryOcrBarcode(base64Data) {
   try {
     const response = await fetch(
-      `https://vision.googleapis.com/v1/images:annotate?key=${process.env.GOOGLE_VISION_API_KEY}`,
+      'https://vision.googleapis.com/v1/images:annotate?key=' + process.env.GOOGLE_VISION_API_KEY,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -213,7 +207,7 @@ async function tryOcrBarcode(base64Data) {
     if (match8) return match8[0]
     return null
   } catch (e) {
-    console.error('OCR 바코드 오류:', e.message)
+    console.error('OCR barcode error:', e.message)
     return null
   }
 }
@@ -225,25 +219,25 @@ app.post('/barcode', async (req, res) => {
 
     let barcode = await tryZxing(base64Data)
     if (barcode) {
-      console.log('ZXing 성공:', barcode)
+      console.log('ZXing success:', barcode)
       return res.json({ barcode, method: 'zxing' })
     }
 
     barcode = await tryOcrBarcode(base64Data)
     if (barcode) {
-      console.log('OCR 성공:', barcode)
+      console.log('OCR success:', barcode)
       return res.json({ barcode, method: 'ocr' })
     }
 
-    console.log('바코드 인식 실패')
+    console.log('Barcode recognition failed')
     res.json({ barcode: null })
   } catch (error) {
-    console.error('바코드 오류:', error)
+    console.error('Barcode error:', error)
     res.status(500).json({ barcode: null, error: error.message })
   }
 })
 
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
-  console.log(`서버 실행 중: http://localhost:${PORT}`)
+  console.log('Server running: http://localhost:' + PORT)
 })
