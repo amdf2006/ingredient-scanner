@@ -1,348 +1,473 @@
+/* ===== 폰트 로드 ===== */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css');
+
+/* ===== 색상 & 디자인 토큰 ===== */
+:root {
+  /* 그린 내추럴 팔레트 */
+  --bg-page: #f0f5ef;
+  --bg-card: #ffffff;
+  --bg-input: #f8faf7;
+  
+  --green-primary: #5a8a5c;
+  --green-dark: #4a7a4c;
+  --green-light: #a8c9a3;
+  --green-lightest: #e8f0e3;
+  --green-sage: #d5e3d1;
+  
+  --danger: #d85757;
+  --danger-bg: #fce8e8;
+  --warning: #e89547;
+  --warning-bg: #fdf1e3;
+  --safe: #5a8a5c;
+  --safe-bg: #e8f0e3;
+  
+  --text-dark: #2c3e2d;
+  --text-body: #3d4c3f;
+  --text-muted: #7a8a7c;
+  --text-light: #a0aca2;
+  
+  --border-soft: #e0e8dc;
+  --border-input: #d5dfd0;
+  
+  --radius-lg: 20px;
+  --radius-md: 14px;
+  --radius-sm: 10px;
+  
+  --shadow-card: 0 2px 12px rgba(90, 138, 92, 0.06);
+  --shadow-hover: 0 4px 16px rgba(90, 138, 92, 0.12);
+}
+
+/* ===== 전역 리셋 & 배경 ===== */
 * {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
 body {
-  background: #f8f9fa;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  color: #1a1a1a;
+  margin: 0;
+  padding: 0;
+  font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  background: var(--bg-page);
+  color: var(--text-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
+/* ===== 컨테이너 ===== */
 .container {
-  max-width: 430px;
+  max-width: 500px;
   margin: 0 auto;
-  padding: 24px 16px;
+  padding: 20px 16px 40px;
   min-height: 100vh;
 }
 
+/* ===== 헤더 ===== */
 .header {
-  text-align: center;
-  padding: 32px 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 24px;
+  padding: 8px 4px;
 }
 
 .header-icon {
-  font-size: 40px;
-  margin-bottom: 12px;
+  width: 56px;
+  height: 56px;
+  background: var(--green-lightest);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  flex-shrink: 0;
 }
 
 .header-title {
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 700;
-  color: #1a1a1a;
-  margin-bottom: 8px;
+  color: var(--text-dark);
+  margin: 0 0 2px 0;
+  letter-spacing: -0.02em;
 }
 
 .header-subtitle {
   font-size: 14px;
-  color: #888;
-  line-height: 1.5;
+  color: var(--text-muted);
+  margin: 0;
+  font-weight: 400;
 }
 
+/* ===== 카드 ===== */
 .card {
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 20px;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 22px 20px;
   margin-bottom: 16px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border-soft);
 }
 
+/* ===== 라벨 ===== */
 .label {
   display: block;
-  font-size: 13px;
-  font-weight: 600;
-  color: #888;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 12px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: 14px;
+  letter-spacing: -0.01em;
 }
 
+/* ===== 업로드 버튼 영역 ===== */
+.upload-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.button-webcam,
+.button-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--green-lightest);
+  color: var(--green-dark);
+  border: 1.5px solid var(--green-sage);
+  border-radius: var(--radius-md);
+  padding: 18px 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  line-height: 1.3;
+  min-height: 96px;
+  font-family: inherit;
+}
+
+.button-webcam:hover,
+.button-upload:hover,
+.button-webcam:active,
+.button-upload:active {
+  background: var(--green-sage);
+  border-color: var(--green-primary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-hover);
+}
+
+/* 버튼 안 이모지를 크게 보이도록 */
+.button-webcam,
+.button-upload {
+  font-size: 0;
+}
+
+.button-webcam::first-letter,
+.button-upload::first-letter {
+  font-size: 32px;
+}
+
+/* 텍스트 부분만 다시 크게 (이모지 다음 텍스트) */
+.button-webcam,
+.button-upload {
+  font-size: 14px;
+}
+
+/* ===== 팁 텍스트 ===== */
+.card > p[style] {
+  font-family: inherit !important;
+  font-size: 14px !important;
+  color: var(--text-muted) !important;
+  background: var(--bg-input);
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  margin: 12px 0 !important;
+  line-height: 1.6 !important;
+}
+
+.card > p[style] b {
+  color: var(--text-dark);
+  font-weight: 700;
+}
+
+/* ===== 미리보기 이미지 ===== */
+.preview-img {
+  width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+  margin-top: 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-soft);
+}
+
+/* ===== 상태 메시지 ===== */
+.ocr-loading {
+  margin: 12px 0 0 0;
+  padding: 12px 14px;
+  background: var(--green-lightest);
+  color: var(--green-dark);
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.5;
+  border-left: 3px solid var(--green-primary);
+}
+
+/* ===== 텍스트 입력 ===== */
 .textarea {
   width: 100%;
-  height: 120px;
-  border: 1.5px solid #f0f0f0;
-  border-radius: 12px;
-  padding: 12px;
-  font-size: 14px;
-  color: #1a1a1a;
-  resize: none;
-  outline: none;
-  transition: border-color 0.2s;
+  min-height: 130px;
+  padding: 16px;
+  border: 1.5px solid var(--border-input);
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+  font-size: 16px;
   font-family: inherit;
-  display: block;
+  color: var(--text-body);
+  resize: vertical;
+  line-height: 1.6;
+  transition: border-color 0.2s ease;
+  box-sizing: border-box;
 }
 
 .textarea:focus {
-  border-color: #1a1a1a;
+  outline: none;
+  border-color: var(--green-primary);
+  background: #fff;
 }
 
+.textarea::placeholder {
+  color: var(--text-light);
+}
+
+.textarea:disabled {
+  background: var(--bg-input);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+/* ===== 메인 버튼 (성분 분석하기) ===== */
 .button {
   width: 100%;
-  padding: 14px;
-  margin-top: 12px;
-  background: #1a1a1a;
-  color: #ffffff;
+  padding: 16px;
+  background: var(--green-primary);
+  color: #fff;
   border: none;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 600;
+  border-radius: var(--radius-md);
+  font-size: 17px;
+  font-weight: 700;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: all 0.2s ease;
+  margin-top: 14px;
+  font-family: inherit;
+  letter-spacing: -0.01em;
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.button:hover {
+.button:hover:not(:disabled) {
+  background: var(--green-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(90, 138, 92, 0.3);
+}
+
+.button:disabled {
+  cursor: not-allowed;
   opacity: 0.85;
 }
 
 .button-loading {
-  opacity: 0.6;
-  cursor: not-allowed;
+  background: var(--green-dark);
 }
 
-.result-card {
-  background: #ffffff;
-}
-
-.result-text {
-  font-size: 14px;
-  line-height: 1.8;
-  color: #333;
-  white-space: pre-wrap;
-}
-
-.progress-bar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: #f0f0f0;
-  z-index: 100;
-}
-
-.progress-fill {
-  height: 100%;
-  background: #1a1a1a;
-  transition: width 0.3s ease;
-}
-
+/* ===== 로딩 스피너 ===== */
 .loading-content {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 10px;
+  justify-content: center;
 }
 
 .spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: #ffffff;
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+  display: inline-block;
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
-.upload-box {
-  display: block;
-  width: 100%;
-  border: 1.5px dashed #e0e0e0;
-  border-radius: 12px;
-  cursor: pointer;
-  overflow: hidden;
-  transition: border-color 0.2s;
-}
 
-.upload-box:hover {
-  border-color: #1a1a1a;
-}
-
-.upload-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 32px;
-  gap: 8px;
-}
-
-.upload-icon {
-  font-size: 32px;
-}
-
-.upload-text {
-  font-size: 14px;
-  color: #888;
-}
-
-.preview-img {
-  width: 100%;
-  height: 200px;
-  object-fit: cover;
-  display: block;
-}
-
-.ocr-loading {
-  font-size: 13px;
-  color: #888;
-  text-align: center;
-  margin-top: 10px;
-}
-.upload-buttons {
-  display: flex;
-  gap: 10px;
-}
-
-.button-webcam, .button-upload {
-  flex: 1;
-  padding: 12px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  text-align: center;
-  border: 1.5px solid #e0e0e0;
-  background: #ffffff;
-  color: #1a1a1a;
-  transition: background 0.2s;
-}
-
-.button-webcam:hover, .button-upload:hover {
-  background: #f5f5f5;
-}
-
-.camera-box {
-  border-radius: 12px;
-  overflow: hidden;
-  background: #000;
-  position: relative;
-}
-
-.camera-video {
-  width: 100%;
-  display: block;
-}
-
-.camera-buttons {
-  display: flex;
-  gap: 10px;
-  padding: 12px;
-  background: #000;
-}
-
-.button-capture {
-  flex: 1;
-  padding: 12px;
-  background: #1a1a1a;
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.button-cancel {
-  padding: 12px 20px;
-  background: transparent;
-  color: #fff;
-  border: 1.5px solid #fff;
-  border-radius: 12px;
-  font-size: 15px;
-  cursor: pointer;
-}
-
-.barcode-overlay {
-  position: absolute;
+/* ===== 진행률 바 ===== */
+.progress-bar {
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  bottom: 44px;
-  pointer-events: none;
-  display: flex;
-  align-items: center;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.5);
+  z-index: 1000;
 }
 
-.barcode-line {
-  width: 100%;
-  height: 2px;
-  background: red;
-  animation: scan-line 2s linear infinite;
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--green-primary), var(--green-light));
+  transition: width 0.3s ease;
 }
 
-@keyframes scan-line {
-  0% { transform: translateY(-100px); }
-  100% { transform: translateY(100px); }
+/* ===== 분석 결과 카드 ===== */
+.result-card {
+  background: var(--bg-card);
+  animation: fadeInUp 0.5s ease;
 }
 
-#barcode-scanner {
-  width: 100%;
-  overflow: hidden;
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-#barcode-scanner video {
-  width: 100% !important;
-  height: auto !important;
-  display: block;
-}
-
-#barcode-scanner canvas {
-  display: none !important;
-}
-
-/* 글씨 크기 2배 키우기 */
-.container {
-  font-size: 20px;
-}
-
-.header-title {
-  font-size: 40px !important;
-}
-
-.header-subtitle {
-  font-size: 18px !important;
-}
-
-.label {
-  font-size: 18px !important;
-}
-
-.textarea {
-  font-size: 18px !important;
-}
-
-.button,
-.button-webcam,
-.button-upload {
-  font-size: 18px !important;
-}
-
-.result-text,
-.result-text p,
-.result-text li {
-  font-size: 18px !important;
-  line-height: 1.7 !important;
+.result-text {
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--text-body);
 }
 
 .result-text h1 {
-  font-size: 28px !important;
+  font-size: 22px;
+  color: var(--text-dark);
+  margin: 20px 0 12px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .result-text h2 {
-  font-size: 24px !important;
+  font-size: 19px;
+  color: var(--text-dark);
+  margin: 20px 0 10px;
+  font-weight: 700;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--green-lightest);
 }
 
 .result-text h3 {
-  font-size: 20px !important;
+  font-size: 17px;
+  color: var(--green-dark);
+  margin: 16px 0 8px;
+  font-weight: 700;
 }
 
+.result-text h1:first-child,
+.result-text h2:first-child,
+.result-text h3:first-child {
+  margin-top: 0;
+}
+
+.result-text p {
+  margin: 10px 0;
+}
+
+.result-text ul,
+.result-text ol {
+  padding-left: 22px;
+  margin: 10px 0;
+}
+
+.result-text li {
+  margin: 6px 0;
+}
+
+.result-text strong {
+  color: var(--text-dark);
+  font-weight: 700;
+}
+
+.result-text code {
+  background: var(--green-lightest);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: var(--green-dark);
+}
+
+/* 결과 안 표 스타일 (위험/주의/안전) */
 .result-text table {
-  font-size: 16px !important;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 16px 0;
+  font-size: 14px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-soft);
 }
 
-.ocr-loading {
-  font-size: 16px !important;
+.result-text thead {
+  background: var(--green-lightest);
+}
+
+.result-text th {
+  padding: 12px 10px;
+  text-align: left;
+  font-weight: 700;
+  color: var(--text-dark);
+  font-size: 14px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.result-text td {
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--border-soft);
+  vertical-align: top;
+  line-height: 1.6;
+}
+
+.result-text tr:last-child td {
+  border-bottom: none;
+}
+
+.result-text tr:hover {
+  background: var(--bg-input);
+}
+
+/* 표 안에 "위험"/"주의"/"안전" 단어가 있으면 색상 강조 (수동으로 안 되지만 시각적 기본 스타일) */
+.result-text td:nth-child(2) {
+  font-weight: 600;
+}
+
+/* ===== 반응형 ===== */
+@media (max-width: 380px) {
+  .header-title {
+    font-size: 22px;
+  }
+  .upload-buttons {
+    gap: 8px;
+  }
+  .button-webcam,
+  .button-upload {
+    padding: 14px 6px;
+    font-size: 13px;
+    min-height: 88px;
+  }
+}
+
+/* ===== 다크모드 대응 (선택적 - body 배경만 유지) ===== */
+@media (prefers-color-scheme: dark) {
+  /* 강제로 라이트 스타일 유지 */
+  body {
+    background: var(--bg-page);
+    color: var(--text-body);
+  }
 }

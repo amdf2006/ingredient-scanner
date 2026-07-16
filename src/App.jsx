@@ -92,7 +92,6 @@ function App() {
   const fetchProductByBarcode = async (barcode) => {
     setOcrLoading(true)
 
-    // 조회할 데이터베이스 목록 (순서대로 시도)
     const databases = [
       { name: 'Open Food Facts', url: `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`, category: '식품' },
       { name: 'Open Beauty Facts', url: `https://world.openbeautyfacts.org/api/v0/product/${barcode}.json`, category: '화장품/세제' },
@@ -124,7 +123,6 @@ function App() {
       }
     }
 
-    // 모든 DB에서 찾지 못함
     setBarcodeMsg('❌ 어느 데이터베이스에도 이 제품이 등록되어 있지 않아요. 성분표를 카메라로 직접 찍어주세요.')
     setOcrLoading(false)
   }
@@ -219,8 +217,10 @@ function App() {
 
       <div className="header">
         <div className="header-icon">🔍</div>
-        <h1 className="header-title">성분 스캐너</h1>
-        <p className="header-subtitle">성분표를 입력하거나 사진을 올려주세요</p>
+        <div>
+          <h1 className="header-title">성분 스캐너</h1>
+          <p className="header-subtitle">성분표를 입력하거나 사진을 올려주세요</p>
+        </div>
       </div>
 
       <div className="card">
@@ -228,7 +228,8 @@ function App() {
 
         <div className="upload-buttons">
           <label className="button-webcam">
-            📷 카메라로 찍기
+            <span style={{ fontSize: 32 }}>📷</span>
+            <span>카메라로 찍기</span>
             <input
               type="file"
               accept="image/*"
@@ -238,7 +239,8 @@ function App() {
             />
           </label>
           <label className="button-upload">
-            📁 사진 업로드
+            <span style={{ fontSize: 32 }}>📁</span>
+            <span>사진 업로드</span>
             <input
               type="file"
               accept="image/*"
@@ -247,7 +249,8 @@ function App() {
             />
           </label>
           <label className="button-webcam">
-            📊 바코드 촬영
+            <span style={{ fontSize: 32 }}>📊</span>
+            <span>바코드 촬영</span>
             <input
               type="file"
               accept="image/*"
@@ -258,7 +261,7 @@ function App() {
           </label>
         </div>
 
-        <p style={{ fontSize: 14, color: '#666', marginTop: 8, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 14, marginTop: 8, lineHeight: 1.5 }}>
           💡 <b>바코드 촬영 팁</b>: 바코드가 화면 가득 차도록, 아래 <b>숫자가 선명하게</b> 보이도록 찍어주세요.
         </p>
 
@@ -277,7 +280,7 @@ function App() {
         <label className="label">성분표 입력</label>
         <textarea
           className="textarea"
-          placeholder="예) Water, Sodium Lauryl Sulfate, Sodium Benzoate..."
+          placeholder="여기에 성분표를 입력해주세요...&#10;(여러 줄 입력 가능)"
           value={ingredients}
           onChange={(e) => setIngredients(e.target.value)}
           disabled={loading}
@@ -293,13 +296,13 @@ function App() {
               <span className="spinner" />
               {loadingMsg} ({progress}%)
             </span>
-          ) : isAnalyzed ? '✅ 성분 분석 완료' : '성분 분석하기'}
+          ) : isAnalyzed ? '✅ 성분 분석 완료' : '🌿 성분 분석하기'}
         </button>
       </div>
 
       {result && (
         <div className="card result-card">
-          <label className="label">분석 결과</label>
+          <label className="label">📋 분석 결과</label>
           <div className="result-text">
             <ReactMarkdown>{result}</ReactMarkdown>
           </div>
