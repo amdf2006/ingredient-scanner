@@ -222,11 +222,11 @@ function App() {
           <label className="button-webcam">
             📷 카메라로 찍기
             <input
-  type="file"
-  accept="image/*"
-  onChange={handlePhotoCapture}
-  style={{ display: 'none' }}
-/>
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoCapture}
+              style={{ display: 'none' }}
+            />
           </label>
           <label className="button-upload">
             📁 사진 업로드
@@ -242,7 +242,6 @@ function App() {
             <input
               type="file"
               accept="image/*"
-              capture="environment"
               onChange={handleBarcodeCapture}
               style={{ display: 'none' }}
             />
