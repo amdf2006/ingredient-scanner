@@ -1,3 +1,353 @@
+/* ===== 폰트 로드 ===== */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css');
+
+/* ===== 색상 & 디자인 토큰 ===== */
+:root {
+  --bg-page: #f0f5ef;
+  --bg-card: #ffffff;
+  --bg-input: #f8faf7;
+
+  --green-primary: #5a8a5c;
+  --green-dark: #4a7a4c;
+  --green-light: #a8c9a3;
+  --green-lightest: #e8f0e3;
+  --green-sage: #d5e3d1;
+
+  --danger: #d85757;
+  --danger-bg: #fce8e8;
+  --warning: #e89547;
+  --warning-bg: #fdf1e3;
+  --safe: #5a8a5c;
+  --safe-bg: #e8f0e3;
+
+  --text-dark: #2c3e2d;
+  --text-body: #3d4c3f;
+  --text-muted: #7a8a7c;
+  --text-light: #a0aca2;
+
+  --border-soft: #e0e8dc;
+  --border-input: #d5dfd0;
+
+  --radius-lg: 20px;
+  --radius-md: 14px;
+  --radius-sm: 10px;
+
+  --shadow-card: 0 2px 12px rgba(90, 138, 92, 0.06);
+  --shadow-hover: 0 4px 16px rgba(90, 138, 92, 0.12);
+}
+
+/* ===== 전역 리셋 ===== */
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  background: var(--bg-page);
+  color: var(--text-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===== SVG 기본 크기 제한 (중요!) ===== */
+svg {
+  max-width: 100%;
+  height: auto;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* ===== 컨테이너 ===== */
+.container {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 20px 16px 40px;
+  min-height: 100vh;
+}
+
+/* ===== 헤더 ===== */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 24px;
+  padding: 8px 4px;
+}
+
+.header-icon {
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  background: var(--green-lightest);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--green-primary);
+}
+
+.header-icon svg {
+  width: 30px;
+  height: 30px;
+}
+
+.header-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin: 0 0 2px 0;
+  letter-spacing: -0.02em;
+}
+
+.header-subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0;
+  font-weight: 400;
+}
+
+/* ===== 카드 ===== */
+.card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 22px 20px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border-soft);
+}
+
+/* ===== 라벨 ===== */
+.label {
+  display: block;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: 14px;
+  letter-spacing: -0.01em;
+}
+
+/* ===== 업로드 버튼 3개 그리드 ===== */
+.upload-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.button-webcam,
+.button-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--green-lightest);
+  color: var(--green-dark);
+  border: 1.5px solid var(--green-sage);
+  border-radius: var(--radius-md);
+  padding: 16px 4px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  line-height: 1.3;
+  min-height: 100px;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.button-webcam svg,
+.button-upload svg {
+  width: 28px;
+  height: 28px;
+  color: var(--green-primary);
+}
+
+.button-webcam:hover,
+.button-upload:hover,
+.button-webcam:active,
+.button-upload:active {
+  background: var(--green-sage);
+  border-color: var(--green-primary);
+}
+
+/* ===== 팁 박스 ===== */
+.tip-box {
+  font-size: 14px;
+  color: var(--text-muted);
+  background: var(--bg-input);
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  margin: 12px 0 0 0;
+  line-height: 1.6;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.tip-box b {
+  color: var(--text-dark);
+  font-weight: 700;
+}
+
+.tip-box svg {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  color: var(--warning);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* ===== 미리보기 이미지 ===== */
+.preview-img {
+  width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+  margin-top: 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-soft);
+}
+
+/* ===== 상태 메시지 ===== */
+.ocr-loading {
+  margin: 12px 0 0 0;
+  padding: 12px 14px;
+  background: var(--green-lightest);
+  color: var(--green-dark);
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.5;
+  border-left: 3px solid var(--green-primary);
+}
+
+/* ===== 텍스트 입력 ===== */
+.textarea {
+  width: 100%;
+  min-height: 130px;
+  padding: 16px;
+  border: 1.5px solid var(--border-input);
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+  font-size: 16px;
+  font-family: inherit;
+  color: var(--text-body);
+  resize: vertical;
+  line-height: 1.6;
+  transition: border-color 0.2s ease;
+  box-sizing: border-box;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--green-primary);
+  background: #fff;
+}
+
+.textarea::placeholder {
+  color: var(--text-light);
+}
+
+.textarea:disabled {
+  background: var(--bg-input);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+/* ===== 메인 버튼 ===== */
+.button {
+  width: 100%;
+  padding: 16px;
+  background: var(--green-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 14px;
+  font-family: inherit;
+  letter-spacing: -0.01em;
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.button svg {
+  width: 20px;
+  height: 20px;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--green-dark);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+.button-loading {
+  background: var(--green-dark);
+}
+
+/* ===== 로딩 스피너 ===== */
+.loading-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ===== 진행률 바 ===== */
+.progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.5);
+  z-index: 1000;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--green-primary), var(--green-light));
+  transition: width 0.3s ease;
+}
+
+/* ===== 결과 카드 ===== */
+.result-card {
+  background: var(--bg-card);
+  animation: fadeInUp 0.5s ease;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* ===== 결과 카드 상단 헤더 ===== */
 .result-header {
   display: flex;
@@ -11,6 +361,7 @@
   color: var(--green-primary);
   width: 22px;
   height: 22px;
+  flex-shrink: 0;
 }
 
 .result-header-icon svg {
@@ -32,7 +383,7 @@
   margin: 0 0 18px 0;
 }
 
-/* ===== 카운트 카드 3개 (위험/주의/안전) ===== */
+/* ===== 카운트 카드 3개 ===== */
 .count-cards {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -160,7 +511,25 @@
   line-height: 1.5;
 }
 
-/* ===== 모바일 표 반응형 ===== */
+/* ===== 결과 텍스트 ===== */
+.result-text {
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--text-body);
+}
+
+/* ===== 오류 메시지 ===== */
+.error-message {
+  background: var(--danger-bg);
+  color: var(--danger);
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--danger);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ===== 모바일 반응형 ===== */
 @media (max-width: 480px) {
   .result-table th,
   .result-table td {
@@ -182,8 +551,13 @@
   }
 }
 
-/* ===== 결과 텍스트 폰트 사이즈 상향 ===== */
-.result-text {
-  font-size: 16px;
-  line-height: 1.8;
+@media (max-width: 380px) {
+  .header-title { font-size: 22px; }
+  .upload-buttons { gap: 8px; }
+  .button-webcam,
+  .button-upload {
+    padding: 14px 4px;
+    font-size: 12px;
+    min-height: 92px;
+  }
 }
