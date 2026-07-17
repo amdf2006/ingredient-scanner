@@ -60,30 +60,41 @@ const IconClipboard = () => (
   </svg>
 )
 
-// JSON 파싱 함수 (마크다운 코드블록 등 안전하게 처리)
+// JSON 파싱 함수 - 디버그 정보 포함
 function parseAnalysisResult(text) {
-  if (!text) return null
+  if (!text) return { data: null, debug: 'text is empty' }
   try {
-    // ```json ... ``` 로 감싼 경우 제거
     let cleaned = text.trim()
-    cleaned = cleaned.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/, '')
 
-    // JSON 부분만 추출
-    const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) return null
-    const parsed = JSON.parse(jsonMatch[0])
-    if (!parsed.items || !Array.isArray(parsed.items)) return null
-    return parsed
+    // 앞뒤 코드블록 제거
+    cleaned = cleaned.replace(/^```(?:json)?\s*/i, '')
+    cleaned = cleaned.replace(/\s*```\s*$/i, '')
+    cleaned = cleaned.trim()
+
+    // 첫 { 부터 마지막 } 까지만 추출
+    const firstBrace = cleaned.indexOf('{')
+    const lastBrace = cleaned.lastIndexOf('}')
+    if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+      return { data: null, debug: '중괄호 없음. 앞 200자: ' + cleaned.substring(0, 200) }
+    }
+
+    const jsonStr = cleaned.substring(firstBrace, lastBrace + 1)
+    const parsed = JSON.parse(jsonStr)
+
+    if (!parsed.items || !Array.isArray(parsed.items)) {
+      return { data: null, debug: 'items 배열 없음. 파싱된 키: ' + Object.keys(parsed).join(', ') }
+    }
+
+    return { data: parsed, debug: null }
   } catch (e) {
-    console.error('JSON 파싱 오류:', e)
-    return null
+    return { data: null, debug: '파싱 오류: ' + e.message + '\n\n원본 시작 부분:\n' + text.substring(0, 300) }
   }
 }
 
 function App() {
   const [ingredients, setIngredients] = useState('')
-  const [result, setResult] = useState(null) // 이제 파싱된 객체 저장
-  const [rawResult, setRawResult] = useState('') // 원본 텍스트 (파싱 실패 시 대비)
+  const [result, setResult] = useState(null)
+  const [rawResult, setRawResult] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingMsg, setLoadingMsg] = useState('')
@@ -268,13 +279,13 @@ function App() {
         if (data.error) {
           setErrorMsg(data.error)
         } else if (data.result) {
-          const parsed = parseAnalysisResult(data.result)
+          const { data: parsed, debug } = parseAnalysisResult(data.result)
           if (parsed) {
             setResult(parsed)
             setAnalyzedText(text)
           } else {
-            // JSON 파싱 실패 시 원본 텍스트 표시
-            setRawResult(data.result)
+            // JSON 파싱 실패 시 디버그 정보 + 원본 텍스트 표시
+            setRawResult('[디버그 정보]\n' + debug + '\n\n[원본 응답]\n' + data.result)
             setAnalyzedText(text)
           }
         }
@@ -294,7 +305,6 @@ function App() {
 
   const isAnalyzed = (result || rawResult) && ingredients.trim() === analyzedText.trim()
 
-  // 카운트 계산
   const counts = result ? {
     danger: result.items.filter(i => i.level === '위험').length,
     warning: result.items.filter(i => i.level === '주의').length,
@@ -449,15 +459,15 @@ function App() {
         </div>
       )}
 
-      {/* JSON 파싱 실패 시: 원본 텍스트라도 보여주기 */}
+      {/* JSON 파싱 실패 시: 디버그 정보 + 원본 텍스트 */}
       {!result && rawResult && (
         <div className="card result-card">
           <div className="result-header">
             <span className="result-header-icon"><IconClipboard /></span>
-            <h2 className="result-title">분석 결과</h2>
+            <h2 className="result-title">분석 결과 (디버그 모드)</h2>
           </div>
           <div className="result-text">
-            <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>{rawResult}</pre>
+            <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0, fontSize: 14 }}>{rawResult}</pre>
           </div>
         </div>
       )}
