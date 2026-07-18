@@ -60,18 +60,15 @@ const IconClipboard = () => (
   </svg>
 )
 
-// JSON 파싱 함수 - 디버그 정보 포함
+// JSON 파싱
 function parseAnalysisResult(text) {
   if (!text) return { data: null, debug: 'text is empty' }
   try {
     let cleaned = text.trim()
-
-    // 앞뒤 코드블록 제거
     cleaned = cleaned.replace(/^```(?:json)?\s*/i, '')
     cleaned = cleaned.replace(/\s*```\s*$/i, '')
     cleaned = cleaned.trim()
 
-    // 첫 { 부터 마지막 } 까지만 추출
     const firstBrace = cleaned.indexOf('{')
     const lastBrace = cleaned.lastIndexOf('}')
     if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
@@ -99,10 +96,11 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [loadingMsg, setLoadingMsg] = useState('')
   const [progress, setProgress] = useState(0)
-  const [ocrLoading, setOcrLoading] = useState(false)
   const [preview, setPreview] = useState(null)
-  const [barcodeMsg, setBarcodeMsg] = useState('')
   const [analyzedText, setAnalyzedText] = useState('')
+
+  // 새 로딩 상태 (전체 오버레이용)
+  const [busyOverlay, setBusyOverlay] = useState({ show: false, title: '', subtitle: '', step: 0, totalSteps: 0 })
 
   useEffect(() => {
     if (!loading) return
@@ -124,6 +122,14 @@ function App() {
       clearInterval(progressInterval)
     }
   }, [loading])
+
+  const showOverlay = (title, subtitle, step, totalSteps) => {
+    setBusyOverlay({ show: true, title, subtitle, step, totalSteps })
+  }
+
+  const hideOverlay = () => {
+    setBusyOverlay({ show: false, title: '', subtitle: '', step: 0, totalSteps: 0 })
+  }
 
   const runOCR = async (file) => {
     return new Promise((resolve) => {
@@ -152,6 +158,7 @@ function App() {
       reader.onload = async (e) => {
         const imageData = e.target.result
         try {
+          showOverlay('바코드 인식 중...', '사진 속 바코드를 읽고 있어요', 1, 3)
           const response = await fetch('https://ingredient-scanner-server.onrender.com/barcode', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -159,13 +166,14 @@ function App() {
           })
           const data = await response.json()
           if (data.barcode) {
-            setBarcodeMsg(`✅ 바코드 인식: ${data.barcode}`)
             await fetchProductByBarcode(data.barcode)
           } else {
-            setBarcodeMsg('❌ 바코드를 인식하지 못했어요. 바코드 아래 숫자가 선명하게 나오도록 다시 찍어주세요.')
+            hideOverlay()
+            setErrorMsg('바코드를 인식하지 못했어요. 바코드 아래 숫자가 선명하게 나오도록 다시 찍어주세요.')
           }
         } catch (error) {
-          setBarcodeMsg('❌ 바코드 인식 중 오류가 발생했어요.')
+          hideOverlay()
+          setErrorMsg('바코드 인식 중 오류가 발생했어요. 다시 시도해주세요.')
         }
         resolve()
       }
@@ -174,8 +182,6 @@ function App() {
   }
 
   const fetchProductByBarcode = async (barcode) => {
-    setOcrLoading(true)
-
     const databases = [
       { name: 'Open Food Facts', url: `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`, category: '식품' },
       { name: 'Open Beauty Facts', url: `https://world.openbeautyfacts.org/api/v0/product/${barcode}.json`, category: '화장품/세제' },
@@ -183,7 +189,7 @@ function App() {
     ]
 
     for (const db of databases) {
-      setBarcodeMsg(`${db.category} 데이터베이스 조회 중...`)
+      showOverlay('제품 정보 조회 중...', `${db.category} 데이터베이스 검색 중`, 2, 3)
 
       try {
         const response = await fetch(db.url)
@@ -196,9 +202,9 @@ function App() {
 
           if (ingredientText) {
             setIngredients(ingredientText)
-            setBarcodeMsg(`✅ ${productName} (${db.category}) - 성분 정보를 가져왔어요!`)
-            setOcrLoading(false)
-            await analyzeIngredients(ingredientText)
+            showOverlay('성분 분석 준비 중...', `${productName} 성분을 가져왔어요`, 3, 3)
+            await new Promise(r => setTimeout(r, 500)) // 잠깐 보여주기
+            await analyzeIngredients(ingredientText, true)
             return
           }
         }
@@ -207,8 +213,8 @@ function App() {
       }
     }
 
-    setBarcodeMsg('❌ 어느 데이터베이스에도 이 제품이 등록되어 있지 않아요. 성분표를 카메라로 직접 찍어주세요.')
-    setOcrLoading(false)
+    hideOverlay()
+    setErrorMsg('어느 데이터베이스에도 이 제품이 등록되어 있지 않아요. 성분표를 카메라로 직접 찍어주세요.')
   }
 
   const resetResults = () => {
@@ -217,7 +223,7 @@ function App() {
     setRawResult('')
     setErrorMsg('')
     setAnalyzedText('')
-    setBarcodeMsg('')
+    hideOverlay()
   }
 
   const handlePhotoCapture = async (e) => {
@@ -225,12 +231,17 @@ function App() {
     if (!file) return
 
     setPreview(URL.createObjectURL(file))
-    setOcrLoading(true)
     resetResults()
 
+    showOverlay('성분표 읽는 중...', '이미지에서 텍스트를 추출하고 있어요', 1, 2)
     const text = await runOCR(file)
     setIngredients(text)
-    setOcrLoading(false)
+
+    if (text.trim()) {
+      showOverlay('AI 분석 준비 중...', '성분 정보를 분석에 넘기고 있어요', 2, 2)
+      await new Promise(r => setTimeout(r, 300))
+    }
+    hideOverlay()
     await analyzeIngredients(text)
   }
 
@@ -239,12 +250,17 @@ function App() {
     if (!file) return
 
     setPreview(URL.createObjectURL(file))
-    setOcrLoading(true)
     resetResults()
 
+    showOverlay('성분표 읽는 중...', '이미지에서 텍스트를 추출하고 있어요', 1, 2)
     const text = await runOCR(file)
     setIngredients(text)
-    setOcrLoading(false)
+
+    if (text.trim()) {
+      showOverlay('AI 분석 준비 중...', '성분 정보를 분석에 넘기고 있어요', 2, 2)
+      await new Promise(r => setTimeout(r, 300))
+    }
+    hideOverlay()
     await analyzeIngredients(text)
   }
 
@@ -253,18 +269,21 @@ function App() {
     if (!file) return
 
     setPreview(URL.createObjectURL(file))
-    setBarcodeMsg('바코드 인식 중...')
     resetResults()
 
     await scanBarcode(file)
   }
 
-  const analyzeIngredients = async (text) => {
-    if (!text.trim()) return
+  const analyzeIngredients = async (text, skipOverlayHide = false) => {
+    if (!text.trim()) {
+      if (!skipOverlayHide) hideOverlay()
+      return
+    }
     setLoading(true)
     setResult(null)
     setRawResult('')
     setErrorMsg('')
+    hideOverlay()
 
     try {
       const response = await fetch('https://ingredient-scanner-server.onrender.com/analyze', {
@@ -284,7 +303,6 @@ function App() {
             setResult(parsed)
             setAnalyzedText(text)
           } else {
-            // JSON 파싱 실패 시 디버그 정보 + 원본 텍스트 표시
             setRawResult('[디버그 정보]\n' + debug + '\n\n[원본 응답]\n' + data.result)
             setAnalyzedText(text)
           }
@@ -317,6 +335,23 @@ function App() {
       {loading && (
         <div className="progress-bar">
           <div className="progress-fill" style={{ width: `${progress}%` }} />
+        </div>
+      )}
+
+      {/* 전체 화면 로딩 오버레이 */}
+      {busyOverlay.show && (
+        <div className="busy-overlay">
+          <div className="busy-modal">
+            <div className="busy-spinner-lg" />
+            <h3 className="busy-title">{busyOverlay.title}</h3>
+            <p className="busy-subtitle">{busyOverlay.subtitle}</p>
+            {busyOverlay.totalSteps > 0 && (
+              <div className="busy-steps">
+                단계 {busyOverlay.step} / {busyOverlay.totalSteps}
+              </div>
+            )}
+            <p className="busy-hint">잠시만 기다려주세요...</p>
+          </div>
         </div>
       )}
 
@@ -359,8 +394,6 @@ function App() {
         </div>
 
         {preview && <img src={preview} alt="캡처된 이미지" className="preview-img" />}
-        {barcodeMsg !== '' && <p className="ocr-loading">{barcodeMsg}</p>}
-        {ocrLoading && <p className="ocr-loading">처리 중...</p>}
       </div>
 
       <div className="card">
@@ -375,7 +408,7 @@ function App() {
         <button
           className={`button ${loading ? 'button-loading' : ''}`}
           onClick={analyze}
-          disabled={loading || ocrLoading || isAnalyzed}
+          disabled={loading || busyOverlay.show || isAnalyzed}
           style={isAnalyzed ? { background: '#4caf50', color: '#fff', cursor: 'not-allowed' } : undefined}
         >
           {loading ? (
@@ -401,7 +434,6 @@ function App() {
         </div>
       )}
 
-      {/* JSON 파싱 성공 시: 예쁜 카드/표 */}
       {result && counts && (
         <div className="card result-card">
           <div className="result-header">
@@ -459,7 +491,6 @@ function App() {
         </div>
       )}
 
-      {/* JSON 파싱 실패 시: 디버그 정보 + 원본 텍스트 */}
       {!result && rawResult && (
         <div className="card result-card">
           <div className="result-header">
