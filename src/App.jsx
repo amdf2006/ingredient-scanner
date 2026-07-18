@@ -541,7 +541,7 @@ function App() {
 
               <div className="youtube-links">
                 {result.youtube_searches.map((query, idx) => (
-                  
+                  <a
                     key={idx}
                     href={buildYouTubeSearchUrl(query)}
                     target="_blank"
