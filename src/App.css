@@ -646,3 +646,107 @@ svg {
   margin: 0;
   font-style: italic;
 }
+
+/* ===== 카테고리 뱃지 ===== */
+.category-badge {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--green-lightest);
+  border: 1.5px solid var(--green-sage);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+
+.category-emoji {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.category-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.category-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-dark);
+  letter-spacing: -0.01em;
+}
+
+/* ===== YouTube 카드 ===== */
+.youtube-card {
+  background: var(--bg-card);
+}
+
+.youtube-icon-color {
+  color: #ff0000 !important;
+}
+
+.youtube-links {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.youtube-link {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--bg-input);
+  border: 1.5px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  text-decoration: none;
+  color: var(--text-dark);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.youtube-link:hover,
+.youtube-link:active {
+  background: #fff5f5;
+  border-color: #ffcccc;
+  transform: translateY(-1px);
+}
+
+.youtube-link-play {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: #ff0000;
+  color: #fff;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.youtube-link-play svg {
+  width: 16px;
+  height: 16px;
+  margin-left: 2px;
+}
+
+.youtube-link-text {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.youtube-link-arrow {
+  display: inline-flex;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.youtube-link-arrow svg {
+  width: 16px;
+  height: 16px;
+}

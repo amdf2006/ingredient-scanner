@@ -60,6 +60,32 @@ const IconClipboard = () => (
   </svg>
 )
 
+const IconPlay = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+    <path d="M8 5v14l11-7z" />
+  </svg>
+)
+
+const IconExternal = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+    <polyline points="15 3 21 3 21 9" />
+    <line x1="10" y1="14" x2="21" y2="3" />
+  </svg>
+)
+
+// 제품 카테고리 이모지 매핑
+const getCategoryEmoji = (productType) => {
+  const map = {
+    food: '🍽️',
+    cosmetic: '💄',
+    cleaning: '🧼',
+    medicine: '💊',
+    other: '📦',
+  }
+  return map[productType] || '📦'
+}
+
 // JSON 파싱
 function parseAnalysisResult(text) {
   if (!text) return { data: null, debug: 'text is empty' }
@@ -98,8 +124,6 @@ function App() {
   const [progress, setProgress] = useState(0)
   const [preview, setPreview] = useState(null)
   const [analyzedText, setAnalyzedText] = useState('')
-
-  // 새 로딩 상태 (전체 오버레이용)
   const [busyOverlay, setBusyOverlay] = useState({ show: false, title: '', subtitle: '', step: 0, totalSteps: 0 })
 
   useEffect(() => {
@@ -203,7 +227,7 @@ function App() {
           if (ingredientText) {
             setIngredients(ingredientText)
             showOverlay('성분 분석 준비 중...', `${productName} 성분을 가져왔어요`, 3, 3)
-            await new Promise(r => setTimeout(r, 500)) // 잠깐 보여주기
+            await new Promise(r => setTimeout(r, 500))
             await analyzeIngredients(ingredientText, true)
             return
           }
@@ -330,6 +354,11 @@ function App() {
     total: result.items.length,
   } : null
 
+  // YouTube 검색 링크 생성
+  const buildYouTubeSearchUrl = (query) => {
+    return 'https://www.youtube.com/results?search_query=' + encodeURIComponent(query)
+  }
+
   return (
     <div className="container">
       {loading && (
@@ -338,7 +367,6 @@ function App() {
         </div>
       )}
 
-      {/* 전체 화면 로딩 오버레이 */}
       {busyOverlay.show && (
         <div className="busy-overlay">
           <div className="busy-modal">
@@ -435,60 +463,104 @@ function App() {
       )}
 
       {result && counts && (
-        <div className="card result-card">
-          <div className="result-header">
-            <span className="result-header-icon"><IconClipboard /></span>
-            <h2 className="result-title">분석 결과</h2>
-          </div>
-          <p className="result-subtitle">총 {counts.total}개 성분 분석 완료</p>
+        <>
+          <div className="card result-card">
+            <div className="result-header">
+              <span className="result-header-icon"><IconClipboard /></span>
+              <h2 className="result-title">분석 결과</h2>
+            </div>
+            <p className="result-subtitle">총 {counts.total}개 성분 분석 완료</p>
 
-          <div className="count-cards">
-            <div className="count-card count-danger">
-              <div className="count-card-label">위험 성분</div>
-              <div className="count-card-number">{counts.danger}개</div>
-            </div>
-            <div className="count-card count-warning">
-              <div className="count-card-label">주의 성분</div>
-              <div className="count-card-number">{counts.warning}개</div>
-            </div>
-            <div className="count-card count-safe">
-              <div className="count-card-label">안전 성분</div>
-              <div className="count-card-number">{counts.safe}개</div>
-            </div>
-          </div>
+            {/* 제품 카테고리 표시 */}
+            {result.category && (
+              <div className="category-badge">
+                <span className="category-emoji">{getCategoryEmoji(result.product_type)}</span>
+                <div>
+                  <div className="category-label">추정 제품</div>
+                  <div className="category-name">{result.category}</div>
+                </div>
+              </div>
+            )}
 
-          <div className="result-table-wrap">
-            <table className="result-table">
-              <thead>
-                <tr>
-                  <th>성분명</th>
-                  <th>위험도</th>
-                  <th>설명</th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.items.map((item, idx) => (
-                  <tr key={idx}>
-                    <td>{item.name}</td>
-                    <td>
-                      <span className={`level-badge level-${
-                        item.level === '위험' ? 'danger' :
-                        item.level === '주의' ? 'warning' : 'safe'
-                      }`}>
-                        {item.level}
-                      </span>
-                    </td>
-                    <td>{item.description}</td>
+            <div className="count-cards">
+              <div className="count-card count-danger">
+                <div className="count-card-label">위험 성분</div>
+                <div className="count-card-number">{counts.danger}개</div>
+              </div>
+              <div className="count-card count-warning">
+                <div className="count-card-label">주의 성분</div>
+                <div className="count-card-number">{counts.warning}개</div>
+              </div>
+              <div className="count-card count-safe">
+                <div className="count-card-label">안전 성분</div>
+                <div className="count-card-number">{counts.safe}개</div>
+              </div>
+            </div>
+
+            <div className="result-table-wrap">
+              <table className="result-table">
+                <thead>
+                  <tr>
+                    <th>성분명</th>
+                    <th>위험도</th>
+                    <th>설명</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {result.items.map((item, idx) => (
+                    <tr key={idx}>
+                      <td>{item.name}</td>
+                      <td>
+                        <span className={`level-badge level-${
+                          item.level === '위험' ? 'danger' :
+                          item.level === '주의' ? 'warning' : 'safe'
+                        }`}>
+                          {item.level}
+                        </span>
+                      </td>
+                      <td>{item.description}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <p className="result-disclaimer">
+              * 본 결과는 참고용이며, 개인차가 있을 수 있습니다.
+            </p>
           </div>
 
-          <p className="result-disclaimer">
-            * 본 결과는 참고용이며, 개인차가 있을 수 있습니다.
-          </p>
-        </div>
+          {/* YouTube 검색 링크 카드 */}
+          {result.youtube_searches && result.youtube_searches.length > 0 && (
+            <div className="card youtube-card">
+              <div className="result-header">
+                <span className="result-header-icon youtube-icon-color"><IconPlay /></span>
+                <h2 className="result-title">관련 YouTube 영상</h2>
+              </div>
+              <p className="result-subtitle">이 제품과 관련된 인기 영상을 찾아보세요</p>
+
+              <div className="youtube-links">
+                {result.youtube_searches.map((query, idx) => (
+                  
+                    key={idx}
+                    href={buildYouTubeSearchUrl(query)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="youtube-link"
+                  >
+                    <span className="youtube-link-play"><IconPlay /></span>
+                    <span className="youtube-link-text">{query}</span>
+                    <span className="youtube-link-arrow"><IconExternal /></span>
+                  </a>
+                ))}
+              </div>
+
+              <p className="result-disclaimer">
+                * 링크를 탭하면 YouTube에서 검색 결과가 열립니다.
+              </p>
+            </div>
+          )}
+        </>
       )}
 
       {!result && rawResult && (
